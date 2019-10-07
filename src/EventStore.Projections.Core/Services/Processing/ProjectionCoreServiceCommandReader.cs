@@ -44,7 +44,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 			_cancellationScope.Cancel();
 			_stopped = true;
 			_publisher.Publish(
-				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader"));
+				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader", message.CorrelationId));
 		}
 
 		private IEnumerable<IODispatcherAsync.Step> ControlSteps(Guid epochId) {

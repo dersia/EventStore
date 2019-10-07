@@ -30,7 +30,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 			IHandle<CoreProjectionProcessingMessage.CheckpointLoaded>,
 			IHandle<CoreProjectionProcessingMessage.PrerecordedEventsLoaded>,
 			IHandle<CoreProjectionProcessingMessage.RestartRequested>,
-			IHandle<CoreProjectionProcessingMessage.Failed> {
+			IHandle<CoreProjectionProcessingMessage.Failed>,
+			IHandle<CoreProjectionStatusMessage.Suspended> {
 		private readonly Guid _workerId;
 		private readonly IPublisher _publisher;
 		private readonly IPublisher _inputQueue;
@@ -47,7 +48,11 @@ namespace EventStore.Projections.Core.Services.Processing {
 
 		private readonly SpooledStreamReadingDispatcher _spoolProcessingResponseDispatcher;
 		private readonly ISingletonTimeoutScheduler _timeoutScheduler;
+		private readonly int _projectionStopTimeoutMs = 5000;
 
+		private bool _stopping;
+		private readonly Dictionary<Guid, CoreProjection> _suspendingProjections = new Dictionary<Guid, CoreProjection>();
+		private Guid _stopCorrelationId = Guid.Empty;
 
 		public ProjectionCoreService(
 			Guid workerId,
@@ -80,25 +85,53 @@ namespace EventStore.Projections.Core.Services.Processing {
 		}
 
 		public void Handle(ProjectionCoreServiceMessage.StopCore message) {
+			_stopCorrelationId = message.CorrelationId;
 			StopProjections();
-			_publisher.Publish(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService"));
 		}
 
 		private void StopProjections() {
+			_stopping = true;
 			_ioDispatcher.BackwardReader.CancelAll();
 			_ioDispatcher.ForwardReader.CancelAll();
 			_ioDispatcher.Writer.CancelAll();
 
 			var allProjections = _projections.Values;
-			foreach (var projection in allProjections)
-				projection.Kill();
+			foreach (var projection in allProjections) {
+				var requiresStopping = projection.Suspend();
+				if (requiresStopping) {
+					_suspendingProjections.Add(projection._projectionCorrelationId, projection);
+				}
+			}
 
-			if (_projections.Count > 0) {
-				_logger.Info("_projections is not empty after all the projections have been killed");
-				_projections.Clear();
+			if (_suspendingProjections.IsEmpty()) {
+				FinishStopping();
+			} else {
+				_timeoutScheduler.Schedule(_projectionStopTimeoutMs, () => {
+					if (!_stopping) return;
+					_logger.Warn("Timed out waiting for projections to stop. Forcing stop.");
+					FinishStopping();
+				});
 			}
 		}
 
+		public void Handle(CoreProjectionStatusMessage.Suspended message) {
+			if (!_stopping) return;
+
+			_suspendingProjections.Remove(message.ProjectionId);
+			if (_suspendingProjections.Count == 0) {
+				FinishStopping();
+			}
+		}
+
+		private void FinishStopping() {
+			if (!_stopping) return;
+			
+			_projections.Clear();
+			_stopping = false;
+			_publisher.Publish(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService", _stopCorrelationId));
+			_stopCorrelationId = Guid.Empty;
+		}
+		
 		public void Handle(ProjectionCoreServiceMessage.CoreTick message) {
 			message.Action();
 		}

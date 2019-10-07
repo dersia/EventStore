@@ -50,6 +50,8 @@ namespace EventStore.Projections.Core.Services.Http {
 
 			Register(service, "/projections",
 				HttpMethod.Get, OnProjections, Codec.NoCodecs, new ICodec[] {Codec.ManualEncoding}, AuthorizationLevel.User);
+			Register(service, "/projections/restart",
+				HttpMethod.Post, OnProjectionsRestart, new ICodec[] { Codec.ManualEncoding}, SupportedCodecs, AuthorizationLevel.Admin);
 			Register(service, "/projections/any",
 				HttpMethod.Get, OnProjectionsGetAny, Codec.NoCodecs, SupportedCodecs, AuthorizationLevel.User);
 			Register(service, "/projections/all-non-transient",
@@ -109,6 +111,16 @@ namespace EventStore.Projections.Core.Services.Http {
 					new KeyValuePair<string, string>(
 						"Location", new Uri(match.BaseUri, "/web/projections.htm").AbsoluteUri)
 				}, x => Log.DebugException(x, "Reply Text Content Failed."));
+		}
+
+		private void OnProjectionsRestart(HttpEntityManager http, UriTemplateMatch match) {
+			if (_httpForwarder.ForwardRequest(http))
+				return;
+
+			Publish(new ProjectionCoreServiceMessage.RestartSubsystem());
+			http.ReplyTextContent(
+				"Projections restarting", 200, "OK", "text/plain",
+				new List<KeyValuePair<string, string>>(), x => Log.DebugException(x, "Reply Text Content Failed."));
 		}
 
 		private void OnProjectionsGetAny(HttpEntityManager http, UriTemplateMatch match) {

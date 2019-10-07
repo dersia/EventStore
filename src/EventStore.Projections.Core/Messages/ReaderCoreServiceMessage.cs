@@ -17,6 +17,12 @@ namespace EventStore.Projections.Core.Messages {
 			public override int MsgTypeId {
 				get { return TypeId; }
 			}
+			
+			public Guid CorrelationId { get; }
+
+			public StopReader(Guid correlationId) {
+				CorrelationId = correlationId;
+			}
 		}
 
 		public class ReaderTick : Message {

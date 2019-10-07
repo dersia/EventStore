@@ -146,6 +146,7 @@ namespace EventStore.Projections.Core {
 				coreInputBus.Subscribe<CoreProjectionProcessingMessage.PrerecordedEventsLoaded>(_projectionCoreService);
 				coreInputBus.Subscribe<CoreProjectionProcessingMessage.RestartRequested>(_projectionCoreService);
 				coreInputBus.Subscribe<CoreProjectionProcessingMessage.Failed>(_projectionCoreService);
+				coreInputBus.Subscribe<CoreProjectionStatusMessage.Suspended>(_projectionCoreService);
 				//NOTE: message forwarding is set up outside (for Read/Write events)
 
 				coreInputBus.Subscribe<ProjectionCoreServiceMessage.StartCore>(_coreResponseWriter);

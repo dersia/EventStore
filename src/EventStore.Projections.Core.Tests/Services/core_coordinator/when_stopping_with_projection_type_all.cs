@@ -21,6 +21,9 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 		private TimeoutScheduler[] timeoutScheduler = { };
 		private FakeEnvelope envelope = new FakeEnvelope();
 
+		private List<ProjectionCoreServiceMessage.StopCore> stopCoreMessages =
+			new List<ProjectionCoreServiceMessage.StopCore>();
+		
 		[SetUp]
 		public void Setup() {
 			queues = new List<FakePublisher>() {new FakePublisher()}.ToArray();
@@ -34,17 +37,24 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 
 			//force stop
 			_coordinator.Handle(new SystemMessage.BecomeUnknown(Guid.NewGuid()));
-		}
-
-		[Test]
-		public void should_publish_stop_reader_messages() {
-			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StopReader).Count);
+			
+			// Publish SubComponent stopped messages for the projection core service
+			stopCoreMessages = queues[0].Messages
+				.FindAll(x => x.GetType() == typeof(ProjectionCoreServiceMessage.StopCore))
+				.Select(x => x as ProjectionCoreServiceMessage.StopCore)
+				.ToList();
+			foreach(var msg in stopCoreMessages)
+				_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService", msg.CorrelationId));
 		}
 
 		[Test]
 		public void should_publish_stop_core_messages() {
-			Assert.AreEqual(1,
-				queues[0].Messages.FindAll(x => x.GetType() == typeof(ProjectionCoreServiceMessage.StopCore)).Count);
+			Assert.AreEqual(1, stopCoreMessages.Count);
+		}
+		
+		[Test]
+		public void should_publish_stop_reader_messages() {
+			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StopReader).Count);
 		}
 	}
 }

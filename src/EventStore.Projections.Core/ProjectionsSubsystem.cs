@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using EventStore.Common.Log;
 using EventStore.Common.Options;
 using EventStore.Core;
 using EventStore.Core.Bus;
@@ -11,7 +12,8 @@ using EventStore.Core.Services.AwakeReaderService;
 using EventStore.Projections.Core.Messages;
 
 namespace EventStore.Projections.Core {
-	public sealed class ProjectionsSubsystem : ISubsystem, IHandle<CoreProjectionStatusMessage.Stopped> {
+	public sealed class ProjectionsSubsystem :ISubsystem,
+		IHandle<CoreProjectionStatusMessage.Stopped> {
 		public InMemoryBus MasterMainBus {
 			get { return _masterMainBus; }
 		}

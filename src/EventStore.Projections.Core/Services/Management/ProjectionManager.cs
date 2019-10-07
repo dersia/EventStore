@@ -42,6 +42,7 @@ namespace EventStore.Projections.Core.Services.Management {
 			IHandle<ProjectionManagementMessage.Command.StartSlaveProjections>,
 			IHandle<ProjectionManagementMessage.Command.GetConfig>,
 			IHandle<ProjectionManagementMessage.Command.UpdateConfig>,
+			IHandle<ProjectionCoreServiceMessage.RestartSubsystem>,
 			IHandle<ProjectionManagementMessage.Internal.CleanupExpired>,
 			IHandle<ProjectionManagementMessage.Internal.Deleted>,
 			IHandle<CoreProjectionStatusMessage.Started>,
@@ -213,6 +214,11 @@ namespace EventStore.Projections.Core.Services.Management {
 
 			_writeDispatcher.CancelAll();
 			_readDispatcher.CancelAll();
+			_readForwardDispatcher.CancelAll();
+			_streamDispatcher.CancelAll();
+			
+			_getStateDispatcher.CancelAll();
+			_getResultDispatcher.CancelAll();
 
 			_projections.Clear();
 			_projectionsMap.Clear();
@@ -445,6 +451,13 @@ namespace EventStore.Projections.Core.Services.Management {
 					message)) return;
 				projection.Handle(message);
 			}
+		}
+
+		public void Handle(ProjectionCoreServiceMessage.RestartSubsystem message) {
+			_logger.Info("PROJECTIONS: RESTARTING PROJECTION MANAGER");
+			Stop();
+			Start();
+			_logger.Info("PROJECTIONS: PROJECTION MANAGER RESTARTED");
 		}
 
 		public void Handle(ProjectionManagementMessage.Command.GetStatistics message) {

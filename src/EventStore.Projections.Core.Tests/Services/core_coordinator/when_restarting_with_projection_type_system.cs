@@ -20,6 +20,7 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 		private ProjectionCoreCoordinator _coordinator;
 		private TimeoutScheduler[] timeoutScheduler = { };
 		private FakeEnvelope envelope = new FakeEnvelope();
+		private Guid stopCorrelationId = Guid.NewGuid();
 
 		[SetUp]
 		public void Setup() {
@@ -53,10 +54,10 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 		}
 
 		private void AllSubComponentsStopped() {
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService"));
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService"));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService", stopCorrelationId));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService", stopCorrelationId));
 			_coordinator.Handle(
-				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader"));
+				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader", stopCorrelationId));
 		}
 
 		[Test]
@@ -73,8 +74,8 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 			AllSubComponentsStarted();
 
 			/*Only some subcomponents stopped*/
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService"));
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService"));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService", stopCorrelationId));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService", stopCorrelationId));
 
 			BecomeReady();
 			Assert.AreEqual(0, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StartReader).Count);
@@ -105,13 +106,13 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 		public void should_start_if_some_subcomponents_stopped_before_becoming_ready_and_some_after_becoming_ready() {
 			AllSubComponentsStarted();
 
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService"));
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService"));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService", stopCorrelationId));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService", stopCorrelationId));
 
 			BecomeReady();
 
 			_coordinator.Handle(
-				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader"));
+				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader", stopCorrelationId));
 
 			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StartReader).Count);
 			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ProjectionCoreServiceMessage.StartCore).Count);
@@ -132,15 +133,15 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 			BecomeReady();
 
 			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreService"));
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService"));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService", stopCorrelationId));
 
 			_coordinator.Handle(
 				new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreServiceCommandReader"));
 
 
 			_coordinator.Handle(
-				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader"));
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService"));
+				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader", stopCorrelationId));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService", stopCorrelationId));
 
 			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StartReader).Count);
 			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ProjectionCoreServiceMessage.StartCore).Count);

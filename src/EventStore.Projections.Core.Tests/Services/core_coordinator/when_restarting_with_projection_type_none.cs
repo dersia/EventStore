@@ -20,6 +20,7 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 		private ProjectionCoreCoordinator _coordinator;
 		private TimeoutScheduler[] timeoutScheduler = { };
 		private FakeEnvelope envelope = new FakeEnvelope();
+		private Guid stopCorrelationId = Guid.NewGuid();
 
 		[SetUp]
 		public void Setup() {
@@ -50,7 +51,7 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 		}
 
 		private void AllSubComponentsStopped() {
-			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService"));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService", stopCorrelationId));
 		}
 
 		[Test]

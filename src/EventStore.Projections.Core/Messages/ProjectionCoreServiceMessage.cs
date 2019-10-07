@@ -24,6 +24,12 @@ namespace EventStore.Projections.Core.Messages {
 			public override int MsgTypeId {
 				get { return TypeId; }
 			}
+
+			public Guid CorrelationId { get; }
+
+			public StopCore(Guid correlationId) {
+				CorrelationId = correlationId;
+			}
 		}
 
 		public class Connected : Message {
@@ -85,8 +91,19 @@ namespace EventStore.Projections.Core.Messages {
 
 			public readonly string SubComponent;
 
-			public SubComponentStopped(string subComponent) {
+			public Guid CorrelationId { get; }
+
+			public SubComponentStopped(string subComponent, Guid correlationId) {
 				SubComponent = subComponent;
+				CorrelationId = correlationId;
+			}
+		}
+		
+		public class RestartSubsystem : Message  {
+			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
+
+			public override int MsgTypeId {
+				get { return TypeId; }
 			}
 		}
 	}

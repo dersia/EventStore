@@ -12,7 +12,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 		IHandle<ClientMessage.DeleteStream>,
 		IHandle<SystemMessage.SubSystemInitialized>,
 		IHandle<ProjectionCoreServiceMessage.SubComponentStarted>,
-		IHandle<ProjectionCoreServiceMessage.SubComponentStopped> {
+		IHandle<ProjectionCoreServiceMessage.SubComponentStopped>,
+		IHandle<ProjectionCoreServiceMessage.RestartSubsystem> {
 		private readonly IPublisher _externalRequestQueue;
 		private readonly IPublisher _inputQueue;
 
@@ -81,8 +82,13 @@ namespace EventStore.Projections.Core.Services.Processing {
 		void IHandle<ProjectionCoreServiceMessage.SubComponentStopped>.Handle(
 			ProjectionCoreServiceMessage.SubComponentStopped message) {
 			_externalRequestQueue.Publish(
-				new ProjectionCoreServiceMessage.SubComponentStopped(message.SubComponent)
+				new ProjectionCoreServiceMessage.SubComponentStopped(message.SubComponent, message.CorrelationId)
 			);
+		}
+		
+		void IHandle<ProjectionCoreServiceMessage.RestartSubsystem>.Handle(
+			ProjectionCoreServiceMessage.RestartSubsystem message) {
+			_externalRequestQueue.Publish(message);
 		}
 	}
 }
