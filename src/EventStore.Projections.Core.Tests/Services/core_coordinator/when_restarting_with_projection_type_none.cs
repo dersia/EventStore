@@ -87,5 +87,37 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 			AllSubComponentsStopped();
 			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StartReader).Count);
 		}
+		
+		[Test]
+		public void should_stop_and_start_the_readers_when_subsystem_restarted() {
+			BecomeReady();
+			AllSubComponentsStopped();
+			AllSubComponentsStarted();
+			queues[0].Messages.Clear();
+			
+			_coordinator.Handle(new ProjectionCoreServiceMessage.RestartSubsystem());
+
+			Assert.AreEqual(0, queues[0].Messages.FindAll(x => x is ProjectionCoreServiceMessage.StopCore).Count, "StopCore");
+
+			var stopReader =
+				queues[0].Messages.SingleOrDefault(x => x is ReaderCoreServiceMessage.StopReader) as
+					ReaderCoreServiceMessage.StopReader;
+
+			Assert.NotNull(stopReader, "StopReader");
+			
+			_coordinator.Handle(
+				new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService", stopReader.CorrelationId));
+			
+			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StartReader).Count, "StartReader");
+			Assert.AreEqual(0, queues[0].Messages.FindAll(x => x is ProjectionCoreServiceMessage.StartCore).Count, "StartCore");
+		}
+		
+		[Test]
+		public void should_ignore_if_subsystem_restarted_and_not_running() {
+			_coordinator.Handle(new ProjectionCoreServiceMessage.RestartSubsystem());
+			
+			Assert.AreEqual(0, queues[0].Messages.FindAll(x => x is ProjectionCoreServiceMessage.StopCore).Count, "StopReader");
+			Assert.AreEqual(0, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StopReader).Count, "StopReader");
+		}
 	}
 }
