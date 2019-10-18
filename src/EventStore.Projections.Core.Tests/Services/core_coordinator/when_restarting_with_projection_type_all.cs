@@ -154,7 +154,7 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 			AllSubComponentsStarted();
 			queues[0].Messages.Clear();
 			
-			_coordinator.Handle(new ProjectionCoreServiceMessage.RestartSubsystem());
+			_coordinator.Handle(new ProjectionCoreServiceMessage.RestartSubComponents());
 
 			var stopCore =
 				queues[0].Messages.SingleOrDefault(x => x is ProjectionCoreServiceMessage.StopCore) as
@@ -176,7 +176,7 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 		
 		[Test]
 		public void should_ignore_if_subsystem_restarted_and_not_running() {
-			_coordinator.Handle(new ProjectionCoreServiceMessage.RestartSubsystem());
+			_coordinator.Handle(new ProjectionCoreServiceMessage.RestartSubComponents());
 			
 			Assert.AreEqual(0, queues[0].Messages.FindAll(x => x is ProjectionCoreServiceMessage.StopCore).Count, "StopReader");
 			Assert.AreEqual(0, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StopReader).Count, "StopReader");

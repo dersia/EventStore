@@ -13,7 +13,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 		IHandle<SystemMessage.SubSystemInitialized>,
 		IHandle<ProjectionCoreServiceMessage.SubComponentStarted>,
 		IHandle<ProjectionCoreServiceMessage.SubComponentStopped>,
-		IHandle<ProjectionCoreServiceMessage.RestartSubsystem> {
+		IHandle<ProjectionCoreServiceMessage.RestartSubComponents> {
 		private readonly IPublisher _externalRequestQueue;
 		private readonly IPublisher _inputQueue;
 
@@ -86,8 +86,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 			);
 		}
 		
-		void IHandle<ProjectionCoreServiceMessage.RestartSubsystem>.Handle(
-			ProjectionCoreServiceMessage.RestartSubsystem message) {
+		void IHandle<ProjectionCoreServiceMessage.RestartSubComponents>.Handle(
+			ProjectionCoreServiceMessage.RestartSubComponents message) {
 			_externalRequestQueue.Publish(message);
 		}
 	}

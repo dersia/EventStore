@@ -98,7 +98,15 @@ namespace EventStore.Projections.Core.Messages {
 				CorrelationId = correlationId;
 			}
 		}
-		
+
+		public class RestartSubComponents : Message {
+			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
+
+			public override int MsgTypeId {
+				get { return TypeId; }
+			}
+		}
+
 		public class RestartSubsystem : Message  {
 			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
 

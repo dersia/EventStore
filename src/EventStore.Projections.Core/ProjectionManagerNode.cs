@@ -108,7 +108,7 @@ namespace EventStore.Projections.Core {
 				mainBus.Subscribe<CoreProjectionManagementMessage.SlaveProjectionReaderAssigned>(projectionManager);
 				mainBus.Subscribe<CoreProjectionStatusMessage.ProjectionWorkerStarted>(projectionManager);
 				mainBus.Subscribe<ProjectionManagementMessage.ReaderReady>(projectionManager);
-				mainBus.Subscribe<ProjectionCoreServiceMessage.RestartSubsystem>(projectionManager);
+				mainBus.Subscribe<ProjectionCoreServiceMessage.RestartSubComponents>(projectionManager);
 				mainBus.Subscribe<ProjectionManagementMessage.Starting>(projectionManagerResponseReader);
 			}
 

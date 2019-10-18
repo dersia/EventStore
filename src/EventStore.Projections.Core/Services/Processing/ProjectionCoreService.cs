@@ -105,12 +105,15 @@ namespace EventStore.Projections.Core.Services.Processing {
 
 			if (_suspendingProjections.IsEmpty()) {
 				FinishStopping();
-			} else {
-				_timeoutScheduler.Schedule(_projectionStopTimeoutMs, () => {
-					if (!_stopping) return;
-					_logger.Warn("Timed out waiting for projections to stop. Forcing stop.");
-					FinishStopping();
-				});
+				// TODO: Set up a timeout.
+				// The timeout scheduler is singleton, so can only have one timeout active at a time
+				// We DO NOT want to override whatever is currently in the timeout scheduler here.
+//			} else {
+//				_timeoutScheduler.Schedule(_projectionStopTimeoutMs, () => {
+//					if (!_stopping) return;
+//					_logger.Warn("Timed out waiting for projections to stop. Forcing stop.");
+//					FinishStopping();
+//				});
 			}
 		}
 

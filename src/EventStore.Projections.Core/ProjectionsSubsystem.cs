@@ -13,7 +13,9 @@ using EventStore.Projections.Core.Messages;
 
 namespace EventStore.Projections.Core {
 	public sealed class ProjectionsSubsystem :ISubsystem,
-		IHandle<CoreProjectionStatusMessage.Stopped> {
+		IHandle<CoreProjectionStatusMessage.Stopped>,
+		IHandle<ProjectionCoreServiceMessage.RestartSubsystem>,
+		IHandle<SystemMessage.SubSystemInitialized> {
 		public InMemoryBus MasterMainBus {
 			get { return _masterMainBus; }
 		}
@@ -66,6 +68,8 @@ namespace EventStore.Projections.Core {
 			ProjectionManagerNode.CreateManagerService(standardComponents, projectionsStandardComponents, _queueMap,
 				_projectionsQueryExpiry);
 			projectionsStandardComponents.MasterMainBus.Subscribe<CoreProjectionStatusMessage.Stopped>(this);
+			_masterMainBus.Subscribe<ProjectionCoreServiceMessage.RestartSubsystem>(this);
+			_masterMainBus.Subscribe<SystemMessage.SubSystemInitialized>(this);
 		}
 
 		private static void CreateAwakerService(StandardComponents standardComponents) {
@@ -76,6 +80,26 @@ namespace EventStore.Projections.Core {
 			standardComponents.MainBus.Subscribe<AwakeServiceMessage.UnsubscribeAwake>(awakeReaderService);
 		}
 
+		private bool _restarting = false;
+		
+		public void Handle(ProjectionCoreServiceMessage.RestartSubsystem message) {
+			if (_restarting) {
+				Console.WriteLine(
+					"=================== SUBSYSTEM IS ALREADY BEING RESTARTED. IGNORING COMMAND TO RESTART ============");
+				return;
+			}
+			Console.WriteLine("======================= RESTARTING SUBSYSTEM ==========================");
+			_restarting = true;
+			_masterMainBus.Publish(new ProjectionCoreServiceMessage.RestartSubComponents());
+		}
+
+		public void Handle(SystemMessage.SubSystemInitialized message) {
+			Console.WriteLine($"SUBSYSTEM INITIALIZED: {message.SubSystemName}, restarting? {_restarting}");
+			if (_restarting && message.SubSystemName == "Projections") {
+				_restarting = false;
+				Console.WriteLine("========================= PROJECTIONS SUBSYSTEM RESTARTED =====================");
+			}
+		}
 
 		public IEnumerable<Task> Start() {
 			var tasks = new List<Task>();

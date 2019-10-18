@@ -16,7 +16,7 @@ namespace EventStore.Projections.Core.Services.Management {
 			IHandle<SystemMessage.StateChangeMessage>,
 			IHandle<SystemMessage.SystemCoreReady>,
 			IHandle<SystemMessage.EpochWritten>,
-			IHandle<ProjectionCoreServiceMessage.RestartSubsystem>,
+			IHandle<ProjectionCoreServiceMessage.RestartSubComponents>,
 			IHandle<ProjectionCoreServiceMessage.SubComponentStarted>,
 			IHandle<ProjectionCoreServiceMessage.SubComponentStopped> {
 		private readonly ILogger Log = LogManager.GetLoggerFor<ProjectionCoreCoordinator>();
@@ -182,7 +182,7 @@ namespace EventStore.Projections.Core.Services.Management {
 				StartWhenConditionsAreMet();
 		}
 
-		public void Handle(ProjectionCoreServiceMessage.RestartSubsystem message) {
+		public void Handle(ProjectionCoreServiceMessage.RestartSubComponents message) {
 			Restart();
 		}
 
@@ -207,7 +207,7 @@ namespace EventStore.Projections.Core.Services.Management {
 			bus.Subscribe<SystemMessage.EpochWritten>(this);
 			bus.Subscribe<ProjectionCoreServiceMessage.SubComponentStarted>(this);
 			bus.Subscribe<ProjectionCoreServiceMessage.SubComponentStopped>(this);
-			bus.Subscribe<ProjectionCoreServiceMessage.RestartSubsystem>(this);
+			bus.Subscribe<ProjectionCoreServiceMessage.RestartSubComponents>(this);
 			if (_runProjections >= ProjectionType.System) {
 				bus.Subscribe<ProjectionManagementMessage.Internal.RegularTimeout>(this);
 			}
