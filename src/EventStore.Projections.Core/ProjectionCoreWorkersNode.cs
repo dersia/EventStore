@@ -53,7 +53,6 @@ namespace EventStore.Projections.Core {
 				coreOutput.Subscribe<ClientMessage.DeleteStream>(forwarder);
 				coreOutput.Subscribe<ProjectionCoreServiceMessage.SubComponentStarted>(forwarder);
 				coreOutput.Subscribe<ProjectionCoreServiceMessage.SubComponentStopped>(forwarder);
-				coreOutput.Subscribe<ProjectionCoreServiceMessage.RestartSubComponents>(forwarder);
 
 				if (projectionsStandardComponents.RunProjections >= ProjectionType.System) {
 					var slaveProjectionResponseWriter = projectionNode.SlaveProjectionResponseWriter;

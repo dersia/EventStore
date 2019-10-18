@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using EventStore.Common.Options;
 using EventStore.Core.Bus;
-using EventStore.Core.Data;
-using EventStore.Core.Messages;
 using EventStore.Core.Messaging;
 using EventStore.Core.Services.TimerService;
 using EventStore.Projections.Core.Messages;
@@ -13,10 +11,8 @@ using EventStore.Common.Log;
 namespace EventStore.Projections.Core.Services.Management {
 	public class ProjectionCoreCoordinator
 		: IHandle<ProjectionManagementMessage.Internal.RegularTimeout>,
-			IHandle<SystemMessage.StateChangeMessage>,
-			IHandle<SystemMessage.SystemCoreReady>,
-			IHandle<SystemMessage.EpochWritten>,
-			IHandle<ProjectionCoreServiceMessage.RestartSubComponents>,
+			IHandle<ProjectionSubsystemMessage.StartComponents>,
+			IHandle<ProjectionSubsystemMessage.StopComponents>,
 			IHandle<ProjectionCoreServiceMessage.SubComponentStarted>,
 			IHandle<ProjectionCoreServiceMessage.SubComponentStopped> {
 		private readonly ILogger Log = LogManager.GetLoggerFor<ProjectionCoreCoordinator>();
@@ -31,6 +27,9 @@ namespace EventStore.Projections.Core.Services.Management {
 		private int _pendingSubComponentsStarts = 0;
 		private int _activeSubComponents = 0;
 		private bool _newInstanceWaiting = false;
+		
+		private bool _running;
+		private Guid _runCorrelationId = Guid.Empty;
 
 		public ProjectionCoreCoordinator(
 			ProjectionType runProjections,
@@ -51,43 +50,39 @@ namespace EventStore.Projections.Core.Services.Management {
 				_timeoutSchedulers[i].Tick();
 		}
 
-		private bool _systemReady = false;
-		private bool _ready = false;
-		private bool _restarting = false;
-
-		private VNodeState _currentState = VNodeState.Unknown;
-		private Guid _epochId = Guid.Empty;
-
-		public void Handle(SystemMessage.SystemCoreReady message) {
-			_systemReady = true;
-			StartWhenConditionsAreMet();
-		}
-
-		public void Handle(SystemMessage.StateChangeMessage message) {
-			_currentState = message.State;
-			if (_currentState != VNodeState.Master)
-				_ready = false;
-
-			StartWhenConditionsAreMet();
-		}
-
-		public void Handle(SystemMessage.EpochWritten message) {
-			if (_ready) return;
-
-			if (_currentState == VNodeState.Master) {
-				_epochId = message.Epoch.EpochId;
-				_ready = true;
+		public void Handle(ProjectionSubsystemMessage.StartComponents message) {
+			if (_started) {
+				Log.Debug("PROJECTIONS: Projection Core Coordinator already started. Correlation: {correlation}",
+					message.CorrelationId);
+				return;
 			}
 
+			_runCorrelationId = message.CorrelationId;
+			_running = true;
+			Log.Debug("PROJECTIONS: Projection Core Coordinator component starting. Correlation: {correlation}",
+				_runCorrelationId);
+			StartWhenConditionsAreMet();
+		}
+
+		public void Handle(ProjectionSubsystemMessage.StopComponents message) {
+			if (!_started) {
+				Log.Debug("PROJECTIONS: Projection Core Coordinator already stopped. Correlation: {correlation}",
+					message.CorrelationId);
+				return;
+			}
+			
+			if (_runCorrelationId != message.CorrelationId) {
+				Log.Debug("PROJECTIONS: Projection Core Coordinator received stop request for incorrect correlation id." +
+				          "Current: {correlationId}. Requested: {requestedCorrelationId}", _runCorrelationId, message.CorrelationId);
+				return;
+			}
+			_running = false;
 			StartWhenConditionsAreMet();
 		}
 
 		private void StartWhenConditionsAreMet() {
 			//run if and only if these conditions are met
-			if (_restarting)
-				return;
-			
-			if (_systemReady && _ready) {
+			if (_running) {
 				if (!_started) {
 					if (_pendingSubComponentsStarts + _activeSubComponents != 0) {
 						_newInstanceWaiting = true;
@@ -98,21 +93,20 @@ namespace EventStore.Projections.Core.Services.Management {
 						_activeSubComponents = 0;
 					}
 
-					Log.Debug("PROJECTIONS: Starting Projections Core Coordinator. (Node State : {state})",
-						_currentState);
+					Log.Debug("PROJECTIONS: Starting Projections Core Coordinator");
 					Start();
 				}
 			} else {
 				if (_started) {
-					Log.Debug("PROJECTIONS: Stopping Projections Core Coordinator. (Node State : {state})",
-						_currentState);
+					Log.Debug("PROJECTIONS: Stopping Projections Core Coordinator");
 					Stop();
 				}
 			}
 		}
 
 		private void ScheduleRegularTimeout() {
-			if (!_started && !_restarting)
+			// TODO: We may need to change this to allow getting timeouts while stopping
+			if (!_started)
 				return;
 			_publisher.Publish(
 				TimerMessage.Schedule.Create(
@@ -131,11 +125,13 @@ namespace EventStore.Projections.Core.Services.Management {
 				_pendingSubComponentsStarts += 1 /*EventReaderCoreService*/;
 
 				if (_runProjections >= ProjectionType.System) {
-					queue.Publish(new ProjectionCoreServiceMessage.StartCore(_epochId));
+					queue.Publish(new ProjectionCoreServiceMessage.StartCore(_runCorrelationId));
 					_pendingSubComponentsStarts += 1 /*ProjectionCoreService*/
 					                               + 1 /*ProjectionCoreServiceCommandReader*/;
 				} else {
-					_publisher.Publish(new SystemMessage.SubSystemInitialized("Projections"));
+					_publisher.Publish(
+						new ProjectionSubsystemMessage.ComponentStarted("ProjectionCoreCoordinator",
+							_runCorrelationId));
 				}
 			}
 		}
@@ -159,6 +155,10 @@ namespace EventStore.Projections.Core.Services.Management {
 			_activeSubComponents++;
 			Log.Debug("PROJECTIONS: SubComponent Started: {subComponent}", message.SubComponent);
 
+			if (_pendingSubComponentsStarts == 0) {
+				_publisher.Publish(
+					new ProjectionSubsystemMessage.ComponentStarted("ProjectionCoreCoordinator", _runCorrelationId));
+			}
 			if (_newInstanceWaiting)
 				StartWhenConditionsAreMet();
 		}
@@ -172,42 +172,20 @@ namespace EventStore.Projections.Core.Services.Management {
 					return;
 				queue.Publish(new ReaderCoreServiceMessage.StopReader(message.CorrelationId));
 			}
-			
-			if (_restarting && _activeSubComponents == 0) {
-				Restarted();
-				return;
-			}
 
+			if (_activeSubComponents == 0) {
+				_publisher.Publish(
+					new ProjectionSubsystemMessage.ComponentStopped("ProjectionCoreCoordinator", _runCorrelationId));
+			}
 			if (_newInstanceWaiting)
 				StartWhenConditionsAreMet();
 		}
 
-		public void Handle(ProjectionCoreServiceMessage.RestartSubComponents message) {
-			Restart();
-		}
-
-		private void Restart() {
-			if (!_started || _currentState != VNodeState.Master) return;
-			if (_systemReady && _ready) {
-				_restarting = true;
-				Log.Info("RESTARTING PROJECTION CORE COORDINATOR");
-				Stop();
-			}
-		}
-
-		private void Restarted() {
-			_restarting = false;
-			Log.Info("PROJECTIONS CORE COORDINATOR RESTARTED");
-			StartWhenConditionsAreMet();
-		}
-
 		public void SetupMessaging(IBus bus) {
-			bus.Subscribe<SystemMessage.StateChangeMessage>(this);
-			bus.Subscribe<SystemMessage.SystemCoreReady>(this);
-			bus.Subscribe<SystemMessage.EpochWritten>(this);
 			bus.Subscribe<ProjectionCoreServiceMessage.SubComponentStarted>(this);
 			bus.Subscribe<ProjectionCoreServiceMessage.SubComponentStopped>(this);
-			bus.Subscribe<ProjectionCoreServiceMessage.RestartSubComponents>(this);
+			bus.Subscribe<ProjectionSubsystemMessage.StartComponents>(this);
+			bus.Subscribe<ProjectionSubsystemMessage.StopComponents>(this);
 			if (_runProjections >= ProjectionType.System) {
 				bus.Subscribe<ProjectionManagementMessage.Internal.RegularTimeout>(this);
 			}

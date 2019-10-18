@@ -117,7 +117,7 @@ namespace EventStore.Projections.Core.Services.Http {
 			if (_httpForwarder.ForwardRequest(http))
 				return;
 
-			Publish(new ProjectionCoreServiceMessage.RestartSubsystem());
+			Publish(new ProjectionSubsystemMessage.RestartSubsystem());
 			http.ReplyTextContent(
 				"Projections restarting", 200, "OK", "text/plain",
 				new List<KeyValuePair<string, string>>(), x => Log.DebugException(x, "Reply Text Content Failed."));

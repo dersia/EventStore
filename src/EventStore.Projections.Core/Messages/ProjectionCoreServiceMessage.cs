@@ -99,20 +99,33 @@ namespace EventStore.Projections.Core.Messages {
 			}
 		}
 
-		public class RestartSubComponents : Message {
+		public class StartSubComponents : Message {
 			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
 
 			public override int MsgTypeId {
 				get { return TypeId; }
 			}
+			
+			public Guid CorrelationId { get; }
+
+			public StartSubComponents(Guid correlationId) {
+				CorrelationId = correlationId;
+			}
 		}
 
-		public class RestartSubsystem : Message  {
+		public class StopSubComponents : Message {
 			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
 
 			public override int MsgTypeId {
 				get { return TypeId; }
 			}
+			
+			public Guid CorrelationId { get; }
+
+			public StopSubComponents(Guid correlationId) {
+				CorrelationId = correlationId;
+			}
 		}
+
 	}
 }
