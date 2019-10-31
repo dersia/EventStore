@@ -11,10 +11,10 @@ namespace EventStore.Projections.Core.Messages {
 				get { return TypeId; }
 			}
 
-			public readonly Guid EpochId;
+			public readonly Guid RunCorrelationId;
 
-			public StartCore(Guid epochId) {
-				EpochId = epochId;
+			public StartCore(Guid runCorrelationId) {
+				RunCorrelationId = runCorrelationId;
 			}
 		}
 

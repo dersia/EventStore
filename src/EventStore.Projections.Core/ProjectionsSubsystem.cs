@@ -190,7 +190,7 @@ namespace EventStore.Projections.Core {
 			_logger.Info("PROJECTIONS SUBSYSTEM: All components started. Correlation: {correlation}",
 				_currentCorrelationId);
 			_subsystemState = SubsystemState.Started;
-			_masterMainBus.Publish(new SystemMessage.SubSystemInitialized("Projections"));
+			_masterOutputBus.Publish(new SystemMessage.SubSystemInitialized("Projections"));
 
 			if (_nodeState != VNodeState.Master) {
 				_logger.Info("PROJECTIONS SUBSYSTEM: Node state is no longer Master. Stopping projections. Current state: {nodeState}",

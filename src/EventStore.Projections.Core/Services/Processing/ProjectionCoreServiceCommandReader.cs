@@ -159,7 +159,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 			_publisher.Publish(
 				new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreServiceCommandReader"));
 
-			ControlSteps(startCoreMessage.EpochId).Run();
+			ControlSteps(startCoreMessage.RunCorrelationId).Run();
 
 			while (!_stopped) {
 				var eof = false;

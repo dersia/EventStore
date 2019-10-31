@@ -58,7 +58,7 @@ namespace EventStore.Projections.Core.Tests.Services {
 		protected Guid _workerId;
 
 		[SetUp]
-		public void Setup() {
+		public virtual void Setup() {
 			_consumer = new TestHandler<Message>();
 			_bus = new InMemoryBus("temp");
 			_bus.Subscribe(_consumer);

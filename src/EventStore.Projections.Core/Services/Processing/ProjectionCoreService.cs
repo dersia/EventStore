@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Principal;
 using EventStore.Common.Log;
 using EventStore.Core.Bus;
 using EventStore.Core.Helpers;
 using EventStore.Core.Services.TimerService;
 using EventStore.Projections.Core.Messages;
-using EventStore.Projections.Core.Messages.ParallelQueryProcessingMessages;
 using EventStore.Projections.Core.Services.Management;
 using EventStore.Common.Utils;
 
@@ -95,8 +95,9 @@ namespace EventStore.Projections.Core.Services.Processing {
 			_ioDispatcher.ForwardReader.CancelAll();
 			_ioDispatcher.Writer.CancelAll();
 
-			var allProjections = _projections.Values;
-			foreach (var projection in allProjections) {
+			var allProjections = _projections.Values.ToArray();
+			foreach (var projection in allProjections)
+			{
 				var requiresStopping = projection.Suspend();
 				if (requiresStopping) {
 					_suspendingProjections.Add(projection._projectionCorrelationId, projection);

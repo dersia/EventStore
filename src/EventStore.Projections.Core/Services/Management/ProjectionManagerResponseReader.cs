@@ -48,7 +48,7 @@ namespace EventStore.Projections.Core.Services.Management {
 			_cancellationScope = new IODispatcherAsync.CancellationScope();
 			Log.Debug("PROJECTIONS: Starting Projection Manager Response Reader (reads from $projections-$master)");
 			_numberOfStartedWorkers = 0;
-			PerformStartReader(message.EpochId).Run();
+			PerformStartReader(message.RunCorrelationId).Run();
 		}
 
 		private IEnumerable<IODispatcherAsync.Step> PerformStartReader(Guid epochId) {
