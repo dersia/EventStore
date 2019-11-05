@@ -121,6 +121,7 @@ namespace EventStore.Projections.Core {
 			if (_runProjections >= ProjectionType.System) {
 				coreInputBus.Subscribe<ProjectionCoreServiceMessage.StartCore>(_projectionCoreService);
 				coreInputBus.Subscribe<ProjectionCoreServiceMessage.StopCore>(_projectionCoreService);
+				coreInputBus.Subscribe<ProjectionCoreServiceMessage.StopCoreTimeout>(_projectionCoreService);
 				coreInputBus.Subscribe<ProjectionCoreServiceMessage.StartCore>(_projectionCoreServiceCommandReader);
 				coreInputBus.Subscribe<ProjectionCoreServiceMessage.StopCore>(_projectionCoreServiceCommandReader);
 				coreInputBus.Subscribe<ProjectionCoreServiceMessage.CoreTick>(_projectionCoreService);

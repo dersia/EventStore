@@ -48,10 +48,10 @@ namespace EventStore.Projections.Core.Services.Processing {
 					nameof(ProjectionCoreServiceCommandReader), message.CorrelationId));
 		}
 
-		private IEnumerable<IODispatcherAsync.Step> ControlSteps(Guid epochId) {
+		private IEnumerable<IODispatcherAsync.Step> ControlSteps(Guid runCorrelationId) {
 			long fromEventNumber = 0;
 
-			Log.Debug("PROJECTIONS: Starting read {stream}", ProjectionNamesBuilder.BuildControlStreamName(epochId));
+			Log.Debug("PROJECTIONS: Starting read {stream}", ProjectionNamesBuilder.BuildControlStreamName(runCorrelationId));
 
 			long subscribeFrom = 0;
 			while (!_stopped) {
@@ -61,7 +61,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 					yield return
 						_ioDispatcher.BeginReadForward(
 							_cancellationScope,
-							ProjectionNamesBuilder.BuildControlStreamName(epochId),
+							ProjectionNamesBuilder.BuildControlStreamName(runCorrelationId),
 							fromEventNumber,
 							1,
 							false,
@@ -71,7 +71,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 								success = true;
 							},
 							() => Log.Warn("Read forward of stream {stream} timed out. Retrying",
-								ProjectionNamesBuilder.BuildControlStreamName(epochId)));
+								ProjectionNamesBuilder.BuildControlStreamName(runCorrelationId)));
 				}
 
 				if (readResultForward.Result != ReadStreamResult.Success
@@ -107,7 +107,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 				yield return
 					_ioDispatcher.BeginSubscribeAwake(
 						_cancellationScope,
-						ProjectionNamesBuilder.BuildControlStreamName(epochId),
+						ProjectionNamesBuilder.BuildControlStreamName(runCorrelationId),
 						new TFPos(subscribeFrom, subscribeFrom),
 						message => { });
 			}

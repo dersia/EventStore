@@ -9,6 +9,7 @@ using EventStore.Core.Services.TimerService;
 using EventStore.Projections.Core.Messages;
 using EventStore.Projections.Core.Services.Management;
 using EventStore.Common.Utils;
+using EventStore.Core.Messaging;
 
 namespace EventStore.Projections.Core.Services.Processing {
 	public class ProjectionCoreService
@@ -31,6 +32,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 			IHandle<CoreProjectionProcessingMessage.PrerecordedEventsLoaded>,
 			IHandle<CoreProjectionProcessingMessage.RestartRequested>,
 			IHandle<CoreProjectionProcessingMessage.Failed>,
+			IHandle<ProjectionCoreServiceMessage.StopCoreTimeout>,
 			IHandle<CoreProjectionStatusMessage.Suspended> {
 		private readonly Guid _workerId;
 		private readonly IPublisher _publisher;
@@ -52,6 +54,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 		private bool _stopping;
 		private readonly Dictionary<Guid, CoreProjection> _suspendingProjections = new Dictionary<Guid, CoreProjection>();
 		private Guid _stopCorrelationId = Guid.Empty;
+		private int _projectionStopTimeoutMs = 5000;
 
 		public ProjectionCoreService(
 			Guid workerId,
@@ -106,16 +109,18 @@ namespace EventStore.Projections.Core.Services.Processing {
 
 			if (_suspendingProjections.IsEmpty()) {
 				FinishStopping();
-				// TODO: Set up a timeout.
-				// The timeout scheduler is singleton, so can only have one timeout active at a time
-				// We DO NOT want to override whatever is currently in the timeout scheduler here.
-//			} else {
-//				_timeoutScheduler.Schedule(_projectionStopTimeoutMs, () => {
-//					if (!_stopping) return;
-//					_logger.Warn("Timed out waiting for projections to stop. Forcing stop.");
-//					FinishStopping();
-//				});
+			} else {
+				_publisher.Publish(TimerMessage.Schedule.Create(
+					TimeSpan.FromMilliseconds(_projectionStopTimeoutMs),
+					new PublishEnvelope(_publisher),
+					new ProjectionCoreServiceMessage.StopCoreTimeout(_stopCorrelationId)));
 			}
+		}
+
+		public void Handle(ProjectionCoreServiceMessage.StopCoreTimeout message) {
+			if (message.CorrelationId != _stopCorrelationId) return;
+			_logger.Debug("PROJECTIONS: Suspending projections in Projection Core Service timed out. Force stopping.");
+			FinishStopping();
 		}
 
 		public void Handle(CoreProjectionStatusMessage.Suspended message) {

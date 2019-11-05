@@ -51,11 +51,11 @@ namespace EventStore.Projections.Core.Services.Management {
 			PerformStartReader(message.RunCorrelationId).Run();
 		}
 
-		private IEnumerable<IODispatcherAsync.Step> PerformStartReader(Guid epochId) {
+		private IEnumerable<IODispatcherAsync.Step> PerformStartReader(Guid runCorrelationId) {
 			yield return
 				_ioDispatcher.BeginUpdateStreamAcl(
 					_cancellationScope,
-					ProjectionNamesBuilder.BuildControlStreamName(epochId),
+					ProjectionNamesBuilder.BuildControlStreamName(runCorrelationId),
 					ExpectedVersion.Any,
 					SystemAccount.Principal,
 					new StreamMetadata(maxAge: ProjectionNamesBuilder.ControlStreamMaxAge),
@@ -88,7 +88,7 @@ namespace EventStore.Projections.Core.Services.Management {
 			yield return
 				_ioDispatcher.BeginWriteEvents(
 					_cancellationScope,
-					ProjectionNamesBuilder.BuildControlStreamName(epochId),
+					ProjectionNamesBuilder.BuildControlStreamName(runCorrelationId),
 					ExpectedVersion.Any,
 					SystemAccount.Principal,
 					new[] {new Event(Guid.NewGuid(), "$response-reader-started", true, "{}", null)},

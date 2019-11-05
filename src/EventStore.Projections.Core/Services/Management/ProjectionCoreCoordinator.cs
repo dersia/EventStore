@@ -51,8 +51,8 @@ namespace EventStore.Projections.Core.Services.Management {
 		}
 
 		public void Handle(ProjectionSubsystemMessage.StartComponents message) {
-			if (_currentState > CoreCoordinatorState.Stopped) {
-				Log.Debug("PROJECTIONS: Projection Core Coordinator already started. Correlation: {correlation}",
+			if (_currentState != CoreCoordinatorState.Stopped) {
+				Log.Debug("PROJECTIONS: Projection Core Coordinator cannot start components as it's not stopped. Correlation: {correlation}",
 					message.CorrelationId);
 				return;
 			}
@@ -63,8 +63,8 @@ namespace EventStore.Projections.Core.Services.Management {
 		}
 
 		public void Handle(ProjectionSubsystemMessage.StopComponents message) {
-			if (_currentState <= CoreCoordinatorState.Stopped) {
-				Log.Debug("PROJECTIONS: Projection Core Coordinator already stopped. Correlation: {correlation}",
+			if (_currentState != CoreCoordinatorState.Started) {
+				Log.Debug("PROJECTIONS: Projection Core Coordinator cannot stop components as it's not started. Correlation: {correlation}",
 					message.CorrelationId);
 				return;
 			}
@@ -77,8 +77,7 @@ namespace EventStore.Projections.Core.Services.Management {
 		}
 
 		private void ScheduleRegularTimeout() {
-			// TODO: We may need to change this to allow getting timeouts while stopping
-			if (_currentState <= CoreCoordinatorState.Stopped)
+			if (_currentState == CoreCoordinatorState.Stopped)
 				return;
 			_publisher.Publish(
 				TimerMessage.Schedule.Create(
@@ -88,8 +87,8 @@ namespace EventStore.Projections.Core.Services.Management {
 		}
 
 		private void Start() {
-			if (_currentState > CoreCoordinatorState.Stopped) {
-				Log.Warn("PROJECTIONS: Projection Core Coordinated tried to start when already started.");
+			if (_currentState != CoreCoordinatorState.Stopped) {
+				Log.Warn("PROJECTIONS: Projection Core Coordinated tried to start when not stopped.");
 				return;
 			}
 			Log.Debug("PROJECTIONS: Starting Projections Core Coordinator");

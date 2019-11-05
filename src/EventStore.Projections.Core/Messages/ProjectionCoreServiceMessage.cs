@@ -32,6 +32,20 @@ namespace EventStore.Projections.Core.Messages {
 			}
 		}
 
+		public class StopCoreTimeout : Message {
+			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
+
+			public override int MsgTypeId {
+				get { return TypeId; }
+			}
+			
+			public Guid CorrelationId { get; }
+
+			public StopCoreTimeout(Guid correlationId) {
+				CorrelationId = correlationId;
+			}
+		}
+		
 		public class Connected : Message {
 			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
 

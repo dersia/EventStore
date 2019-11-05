@@ -202,7 +202,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 		}
 		
 		public bool Suspend() {
-			if (_state == State.Stopped) return false;
+			if (_state == State.Stopped || _state == State.Suspended)
+				return false;
 			
 			GoToState(State.Suspended);
 			return true;
