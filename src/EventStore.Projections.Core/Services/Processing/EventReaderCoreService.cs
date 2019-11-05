@@ -306,7 +306,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 			_stopped = true;
 			
 			_publisher.Publish(
-				new ProjectionCoreServiceMessage.SubComponentStopped("EventReaderCoreService", message.CorrelationId));
+				new ProjectionCoreServiceMessage.SubComponentStopped(nameof(EventReaderCoreService), message.CorrelationId));
 		}
 	
 		private bool TrySubscribeHeadingEventReader(
@@ -339,7 +339,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 
 		public void Handle(ReaderCoreServiceMessage.StartReader message) {
 			StartReaders();
-			_publisher.Publish(new ProjectionCoreServiceMessage.SubComponentStarted("EventReaderCoreService"));
+			_publisher.Publish(new ProjectionCoreServiceMessage.SubComponentStarted(
+				nameof(EventReaderCoreService), message.CorrelationId));
 		}
 
 		public void Handle(ReaderCoreServiceMessage.StopReader message) {

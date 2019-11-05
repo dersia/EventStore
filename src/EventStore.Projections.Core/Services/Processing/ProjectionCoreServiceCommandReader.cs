@@ -44,7 +44,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 			_cancellationScope.Cancel();
 			_stopped = true;
 			_publisher.Publish(
-				new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreServiceCommandReader", message.CorrelationId));
+				new ProjectionCoreServiceMessage.SubComponentStopped(
+					nameof(ProjectionCoreServiceCommandReader), message.CorrelationId));
 		}
 
 		private IEnumerable<IODispatcherAsync.Step> ControlSteps(Guid epochId) {
@@ -157,7 +158,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 				"PROJECTIONS: Finished Starting Projection Core Reader (reads from $projections-${coreServiceId})",
 				_coreServiceId);
 			_publisher.Publish(
-				new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreServiceCommandReader"));
+				new ProjectionCoreServiceMessage.SubComponentStarted(
+					nameof(ProjectionCoreServiceCommandReader), startCoreMessage.RunCorrelationId));
 
 			ControlSteps(startCoreMessage.RunCorrelationId).Run();
 

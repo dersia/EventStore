@@ -30,6 +30,12 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 			_coordinator =
 				new ProjectionCoreCoordinator(ProjectionType.System, timeoutScheduler, queues, publisher, envelope);
 			_coordinator.Handle(new ProjectionSubsystemMessage.StartComponents(startCorrelation));
+			
+			// Start all sub components
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStarted("EventReaderCoreService", startCorrelation));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreService", startCorrelation));
+			_coordinator.Handle(
+				new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreServiceCommandReader", startCorrelation));
 
 			//force stop
 			_coordinator.Handle(new ProjectionSubsystemMessage.StopComponents(startCorrelation));

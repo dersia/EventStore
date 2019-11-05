@@ -31,7 +31,7 @@ namespace EventStore.Projections.Core.Tests.Services.core_projection {
 						_lastEventIdBeforeSuspension,
 						"handle_this_type", false, "data2", "metadata"), _subscriptionId, 1));
 
-			//kill the projection
+			//suspend the projection
 			var suspended = _coreProjection.Suspend();
 			Assert.True(suspended, "Projection was not suspended");
 

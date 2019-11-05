@@ -4,10 +4,15 @@ using EventStore.Core.Messaging;
 namespace EventStore.Projections.Core.Messages {
 	public static class ReaderCoreServiceMessage {
 		public class StartReader : Message {
+			public Guid CorrelationId { get; }
 			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
 
 			public override int MsgTypeId {
 				get { return TypeId; }
+			}
+
+			public StartReader(Guid correlationId) {
+				CorrelationId = correlationId;
 			}
 		}
 

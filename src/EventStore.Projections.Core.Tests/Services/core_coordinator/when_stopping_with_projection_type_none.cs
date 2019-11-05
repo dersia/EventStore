@@ -26,6 +26,9 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 			_coordinator =
 				new ProjectionCoreCoordinator(ProjectionType.None, timeoutScheduler, queues, publisher, envelope);
 			_coordinator.Handle(new ProjectionSubsystemMessage.StartComponents(startCorrelation));
+			
+			// start sub components
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStarted("EventReaderCoreService", startCorrelation));
 
 			//force stop
 			_coordinator.Handle(new ProjectionSubsystemMessage.StopComponents(startCorrelation));

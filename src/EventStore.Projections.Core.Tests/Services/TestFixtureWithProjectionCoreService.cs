@@ -91,8 +91,10 @@ namespace EventStore.Projections.Core.Tests.Services {
 			_bus.Subscribe(
 				_subscriptionDispatcher.CreateSubscriber<EventReaderSubscriptionMessage.ReaderAssignedReader>());
 			_bus.Subscribe(_spoolProcessingResponseDispatcher.CreateSubscriber<PartitionProcessingResult>());
-			_readerService.Handle(new Messages.ReaderCoreServiceMessage.StartReader());
-			_service.Handle(new ProjectionCoreServiceMessage.StartCore(Guid.NewGuid()));
+			
+			var startCorrelationId = Guid.NewGuid();
+			_readerService.Handle(new Messages.ReaderCoreServiceMessage.StartReader(startCorrelationId));
+			_service.Handle(new ProjectionCoreServiceMessage.StartCore(startCorrelationId));
 		}
 
 		protected IReaderStrategy CreateReaderStrategy() {

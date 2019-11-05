@@ -30,6 +30,12 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 			_coordinator =
 				new ProjectionCoreCoordinator(ProjectionType.All, timeoutScheduler, queues, publisher, envelope);
 			_coordinator.Handle(new ProjectionSubsystemMessage.StartComponents(startCorrelation));
+			
+			// Start all sub components
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStarted("EventReaderCoreService", startCorrelation));
+			_coordinator.Handle(new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreService", startCorrelation));
+			_coordinator.Handle(
+				new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreServiceCommandReader", startCorrelation));
 
 			//force stop
 			_coordinator.Handle(new ProjectionSubsystemMessage.StopComponents(startCorrelation));
@@ -49,7 +55,7 @@ namespace EventStore.Projections.Core.Tests.Services.core_coordinator {
 		}
 		
 		[Test]
-		public void should_publish_stop_reader_messages() {
+		public void should_publish_stop_reader_messages_after_core_stopped() {
 			Assert.AreEqual(1, queues[0].Messages.FindAll(x => x is ReaderCoreServiceMessage.StopReader).Count);
 		}
 	}

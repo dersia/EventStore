@@ -48,7 +48,6 @@ namespace EventStore.Projections.Core.Services.Processing {
 
 		private readonly SpooledStreamReadingDispatcher _spoolProcessingResponseDispatcher;
 		private readonly ISingletonTimeoutScheduler _timeoutScheduler;
-		private readonly int _projectionStopTimeoutMs = 5000;
 
 		private bool _stopping;
 		private readonly Dictionary<Guid, CoreProjection> _suspendingProjections = new Dictionary<Guid, CoreProjection>();
@@ -81,7 +80,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 		}
 
 		public void Handle(ProjectionCoreServiceMessage.StartCore message) {
-			_publisher.Publish(new ProjectionCoreServiceMessage.SubComponentStarted("ProjectionCoreService"));
+			_publisher.Publish(new ProjectionCoreServiceMessage.SubComponentStarted(
+				nameof(ProjectionCoreService), message.RunCorrelationId));
 		}
 
 		public void Handle(ProjectionCoreServiceMessage.StopCore message) {
@@ -132,7 +132,8 @@ namespace EventStore.Projections.Core.Services.Processing {
 			
 			_projections.Clear();
 			_stopping = false;
-			_publisher.Publish(new ProjectionCoreServiceMessage.SubComponentStopped("ProjectionCoreService", _stopCorrelationId));
+			_publisher.Publish(new ProjectionCoreServiceMessage.SubComponentStopped(
+				nameof(ProjectionCoreService), _stopCorrelationId));
 			_stopCorrelationId = Guid.Empty;
 		}
 		

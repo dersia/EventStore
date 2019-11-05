@@ -74,7 +74,7 @@ namespace EventStore.Projections.Core.Services.Processing {
 		void IHandle<ProjectionCoreServiceMessage.SubComponentStarted>.Handle(
 			ProjectionCoreServiceMessage.SubComponentStarted message) {
 			_externalRequestQueue.Publish(
-				new ProjectionCoreServiceMessage.SubComponentStarted(message.SubComponent)
+				new ProjectionCoreServiceMessage.SubComponentStarted(message.SubComponent, message.CorrelationId)
 			);
 		}
 

@@ -39,7 +39,7 @@ namespace EventStore.Projections.Core.Messages {
 				CorrelationId = correlationId;
 			}
 		}	
-		
+	
 		public class StopComponents : Message  {
 			public Guid CorrelationId { get; }
 			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);

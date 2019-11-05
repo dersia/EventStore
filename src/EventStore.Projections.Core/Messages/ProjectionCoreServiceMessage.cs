@@ -75,9 +75,11 @@ namespace EventStore.Projections.Core.Messages {
 				get { return TypeId; }
 			}
 
-			public readonly string SubComponent;
-
-			public SubComponentStarted(string subComponent) {
+			public string SubComponent { get; }
+			public Guid CorrelationId { get; }
+		
+			public SubComponentStarted(string subComponent, Guid correlationId) {
+				CorrelationId = correlationId;
 				SubComponent = subComponent;
 			}
 		}
