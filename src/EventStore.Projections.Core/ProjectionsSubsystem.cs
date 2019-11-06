@@ -23,6 +23,10 @@ namespace EventStore.Projections.Core {
 		public InMemoryBus MasterMainBus {
 			get { return _masterMainBus; }
 		}
+
+		public InMemoryBus MasterOutputBus {
+			get { return _masterOutputBus; }
+		}
 		
 		private readonly int _projectionWorkerThreadCount;
 		private readonly ProjectionType _runProjections;
@@ -118,6 +122,7 @@ namespace EventStore.Projections.Core {
 			if (_nodeState != VNodeState.Master) {
 				_logger.Debug("PROJECTIONS SUBSYSTEM: Not starting because node is not master. Node state: {nodeState}",
 					_nodeState);
+				return;
 			}
 			if (_subsystemState != SubsystemState.Ready && _subsystemState != SubsystemState.Stopped) {
 				_logger.Debug("PROJECTIONS SUBSYSTEM: Not starting because system is not ready or stopped. State: {state}",
@@ -129,6 +134,7 @@ namespace EventStore.Projections.Core {
 				return;
 			}
 
+			_restarting = false;
 			_currentCorrelationId = Guid.NewGuid();
 			_logger.Info("PROJECTIONS SUBSYSTEM: Starting components. Correlation: {correlationId}", _currentCorrelationId);
 			_subsystemState = SubsystemState.Starting;
@@ -171,6 +177,7 @@ namespace EventStore.Projections.Core {
 					"PROJECTIONS SUBSYSTEM: Received component started for incorrect correlation id. " +
 					"Requested: {startCorrelation} | Current: {currentCorrelation}",
 					message.CorrelationId, _currentCorrelationId);
+				return;
 			}
 
 			if (_pendingComponentStarts <= 0 || _subsystemState != SubsystemState.Starting)
