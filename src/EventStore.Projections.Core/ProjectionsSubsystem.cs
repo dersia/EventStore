@@ -52,7 +52,7 @@ namespace EventStore.Projections.Core {
 		private VNodeState _nodeState;
 		private SubsystemState _subsystemState = SubsystemState.NotReady;
 		private Guid _currentCorrelationId;
-
+		
 		public ProjectionsSubsystem(int projectionWorkerThreadCount, ProjectionType runProjections,
 			bool startStandardProjections, TimeSpan projectionQueryExpiry, bool faultOutOfOrderProjections) {
 			if (runProjections <= ProjectionType.System)
@@ -111,6 +111,8 @@ namespace EventStore.Projections.Core {
 
 		public void Handle(SystemMessage.StateChangeMessage message) {
 			_nodeState = message.State;
+			if (_subsystemState == SubsystemState.NotReady) return;
+			
 			if (_nodeState == VNodeState.Master) {
 				StartComponents();
 			} else {
@@ -129,15 +131,15 @@ namespace EventStore.Projections.Core {
 					_subsystemState);
 				return;
 			}
-			if (_runningComponentCount != 0) {
+			if (_runningComponentCount > 0) {
 				_logger.Warn("PROJECTIONS SUBSYSTEM: Subsystem is stopped, but components are still running.");
 				return;
 			}
 
+			_subsystemState = SubsystemState.Starting;
 			_restarting = false;
 			_currentCorrelationId = Guid.NewGuid();
 			_logger.Info("PROJECTIONS SUBSYSTEM: Starting components. Correlation: {correlationId}", _currentCorrelationId);
-			_subsystemState = SubsystemState.Starting;
 			_pendingComponentStarts = ComponentCount;
 			_masterMainBus.Publish(new ProjectionSubsystemMessage.StartComponents(_currentCorrelationId));
 		}
@@ -156,6 +158,7 @@ namespace EventStore.Projections.Core {
 		public void Handle(ProjectionSubsystemMessage.RestartSubsystem message) {
 			if (_restarting) {
 				_logger.Info("PROJECTIONS SUBSYSTEM: Not restarting because subsystem is already being restarted.");
+				message.ReplyEnvelope.ReplyWith(new ProjectionSubsystemMessage.InvalidSubsystemRestart("Restarting"));
 				return;
 			}
 
@@ -163,12 +166,14 @@ namespace EventStore.Projections.Core {
 				_logger.Info(
 					"PROJECTIONS SUBSYSTEM: Not restarting because the subsystem is not started. State: {state}",
 					_subsystemState);
+				message.ReplyEnvelope.ReplyWith(new ProjectionSubsystemMessage.InvalidSubsystemRestart(_subsystemState.ToString()));
 				return;
 			}
 
 			_logger.Info("PROJECTIONS SUBSYSTEM: Restarting subsystem.");
 			_restarting = true;
 			StopComponents();
+			message.ReplyEnvelope.ReplyWith(new ProjectionSubsystemMessage.SubsystemRestarting());
 		}
 		
 		public void Handle(ProjectionSubsystemMessage.ComponentStarted message) {
@@ -215,13 +220,17 @@ namespace EventStore.Projections.Core {
 				return;
 			}
 
-			if (_runningComponentCount <= 0 || _subsystemState != SubsystemState.Stopping)
+			if (_subsystemState != SubsystemState.Stopping)
 				return;
 
 			_logger.Debug("PROJECTIONS SUBSYSTEM: Component '{componentName}' stopped. Correlation: {correlation}",
 				message.ComponentName, message.CorrelationId);
 			_runningComponentCount--;
-			
+			if (_runningComponentCount < 0) {
+				_logger.Warn("PROJECTIONS SUBSYSTEM: Got more component stopped messages than running components.");
+				_runningComponentCount = 0;
+			}
+
 			if (_runningComponentCount == 0) {
 				AllComponentsStopped();
 			}

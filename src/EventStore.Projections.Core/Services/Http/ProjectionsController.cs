@@ -117,10 +117,21 @@ namespace EventStore.Projections.Core.Services.Http {
 			if (_httpForwarder.ForwardRequest(http))
 				return;
 
-			Publish(new ProjectionSubsystemMessage.RestartSubsystem());
-			http.ReplyTextContent(
-				"Projections restarting", 200, "OK", "text/plain",
-				new List<KeyValuePair<string, string>>(), x => Log.DebugException(x, "Reply Text Content Failed."));
+			var envelope = new SendToHttpEnvelope(_networkSendQueue, http,
+				(e, message) => e.ResponseCodec.To("Restarting"),
+				(e, message) => {
+					switch (message) {
+						case ProjectionSubsystemMessage.SubsystemRestarting _:
+							return Configure.Ok(e.ResponseCodec.ContentType);
+						case ProjectionSubsystemMessage.InvalidSubsystemRestart fail:
+							return Configure.BadRequest
+								($"Projection Subsystem cannot be restarted as it is in the wrong state: {fail.SubsystemState}");
+						default:
+							return Configure.InternalServerError();
+					}
+				}
+			);
+			Publish(new ProjectionSubsystemMessage.RestartSubsystem(envelope));
 		}
 
 		private void OnProjectionsGetAny(HttpEntityManager http, UriTemplateMatch match) {

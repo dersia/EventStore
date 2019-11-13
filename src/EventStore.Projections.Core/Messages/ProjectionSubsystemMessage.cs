@@ -10,8 +10,36 @@ namespace EventStore.Projections.Core.Messages {
 			public override int MsgTypeId {
 				get { return TypeId; }
 			}
-		}	
-		
+
+			public IEnvelope ReplyEnvelope { get; }
+			
+			public RestartSubsystem(IEnvelope replyEnvelope) {
+				ReplyEnvelope = replyEnvelope;
+			}
+		}
+
+		public class InvalidSubsystemRestart : Message {
+			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
+
+			public override int MsgTypeId {
+				get { return TypeId; }
+			}
+
+			public string SubsystemState { get; }
+
+			public InvalidSubsystemRestart(string subsystemState) {
+				SubsystemState = subsystemState;
+			}
+		}
+
+		public class SubsystemRestarting : Message {
+			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
+
+			public override int MsgTypeId {
+				get { return TypeId; }
+			}
+		}
+
 		public class StartComponents : Message  {
 			public Guid CorrelationId { get; }
 			private static readonly int TypeId = System.Threading.Interlocked.Increment(ref NextMsgId);
