@@ -12,6 +12,7 @@ using EventStore.Core.Authentication;
 using EventStore.Core.Bus;
 using EventStore.Core.Messages;
 using EventStore.Core.Util;
+using TaskEx = System.Threading.Tasks.Task;
 
 namespace EventStore.ClientAPI.Embedded {
 	internal class EventStoreEmbeddedNodeConnection : IEventStoreConnection, IEventStoreTransactionConnection {
@@ -89,7 +90,7 @@ namespace EventStore.ClientAPI.Embedded {
 			_subscriptionBus.Subscribe<ClientMessage.PersistentSubscriptionConfirmation>(_subscriptions);
 			_subscriptionBus.Subscribe<ClientMessage.PersistentSubscriptionStreamEventAppeared>(_subscriptions);
 			_subscriptionBus.Subscribe(new AdHocHandler<ClientMessage.SubscribeToStream>(_publisher.Publish));
-			_subscriptionBus.Subscribe(new AdHocHandler<ClientMessage.SubscribeToStreamFiltered>(_publisher.Publish));
+			_subscriptionBus.Subscribe(new AdHocHandler<ClientMessage.FilteredSubscribeToStream>(_publisher.Publish));
 			_subscriptionBus.Subscribe(new AdHocHandler<ClientMessage.UnsubscribeFromStream>(_publisher.Publish));
 			_subscriptionBus.Subscribe(
 				new AdHocHandler<ClientMessage.ConnectToPersistentSubscription>(_publisher.Publish));
@@ -371,13 +372,17 @@ namespace EventStore.ClientAPI.Embedded {
 			return source.Task;
 		}
 
-		public Task<AllEventsSlice> ReadAllEventsForwardFilteredAsync(Position position, int maxCount,
-			bool resolveLinkTos, Filter filter, int? maxSearchWindow = null, UserCredentials userCredentials = null) {
-			var maxSearchWindowInternal = maxSearchWindow.GetValueOrDefault(maxCount);
+		public Task<AllEventsSlice> FilteredReadAllEventsForwardAsync(Position position, int maxCount,
+			bool resolveLinkTos, Filter filter, UserCredentials userCredentials = null) {
+			return FilteredReadAllEventsForwardAsync(position, maxCount, resolveLinkTos, filter, maxCount,
+				userCredentials);
+		}
 
+		public Task<AllEventsSlice> FilteredReadAllEventsForwardAsync(Position position, int maxCount,
+			bool resolveLinkTos, Filter filter, int maxSearchWindow, UserCredentials userCredentials = null) {
 			Ensure.Positive(maxCount, "maxCount");
-			Ensure.Positive(maxSearchWindowInternal, nameof(maxSearchWindow));
-			Ensure.GreaterThanOrEqualTo(maxSearchWindowInternal, maxCount, nameof(maxSearchWindow));
+			Ensure.Positive(maxSearchWindow, nameof(maxSearchWindow));
+			Ensure.GreaterThanOrEqualTo(maxSearchWindow, maxCount, nameof(maxSearchWindow));
 			Ensure.NotNull(filter, nameof(filter));
 
 			if (maxCount > ClientApiConstants.MaxReadSize)
@@ -386,7 +391,7 @@ namespace EventStore.ClientAPI.Embedded {
 					ClientApiConstants.MaxReadSize));
 			var source = new TaskCompletionSource<AllEventsSlice>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-			var envelope = new EmbeddedResponseEnvelope(new EmbeddedResponders.ReadAllEventsForwardFiltered(source));
+			var envelope = new EmbeddedResponseEnvelope(new EmbeddedResponders.FilteredReadAllEventsForward(source));
 
 			Guid corrId = Guid.NewGuid();
 
@@ -394,9 +399,9 @@ namespace EventStore.ClientAPI.Embedded {
 
 			_publisher.PublishWithAuthentication(_authenticationProvider,
 				GetUserCredentials(_settings, userCredentials), source.SetException, user =>
-					new ClientMessage.ReadAllEventsForwardFiltered(corrId, corrId, envelope,
+					new ClientMessage.FilteredReadAllEventsForward(corrId, corrId, envelope,
 						position.CommitPosition,
-						position.PreparePosition, maxCount, resolveLinkTos, false, maxSearchWindowInternal, null,
+						position.PreparePosition, maxCount, resolveLinkTos, false, maxSearchWindow, null,
 						EventFilter.Get(serverFilter), user));
 			return source.Task;
 		}
@@ -419,13 +424,17 @@ namespace EventStore.ClientAPI.Embedded {
 			return source.Task;
 		}
 
-		public Task<AllEventsSlice> ReadAllEventsBackwardFilteredAsync(Position position, int maxCount,
-			bool resolveLinkTos, Filter filter, int? maxSearchWindow = null, UserCredentials userCredentials = null) {
-			var maxSearchWindowInternal = maxSearchWindow.GetValueOrDefault(maxCount);
+		public Task<AllEventsSlice> FilteredReadAllEventsBackwardAsync(Position position, int maxCount,
+			bool resolveLinkTos, Filter filter, UserCredentials userCredentials = null) {
+			return FilteredReadAllEventsBackwardAsync(position, maxCount, resolveLinkTos, filter, maxCount,
+				userCredentials);
+		}
 
+		public Task<AllEventsSlice> FilteredReadAllEventsBackwardAsync(Position position, int maxCount,
+			bool resolveLinkTos, Filter filter, int maxSearchWindow, UserCredentials userCredentials = null) {
 			Ensure.Positive(maxCount, "maxCount");
-			Ensure.Positive(maxSearchWindowInternal, nameof(maxSearchWindow));
-			Ensure.GreaterThanOrEqualTo(maxSearchWindowInternal, maxCount, nameof(maxSearchWindow));
+			Ensure.Positive(maxSearchWindow, nameof(maxSearchWindow));
+			Ensure.GreaterThanOrEqualTo(maxSearchWindow, maxCount, nameof(maxSearchWindow));
 			Ensure.NotNull(filter, nameof(filter));
 
 			if (maxCount > ClientApiConstants.MaxReadSize)
@@ -433,16 +442,16 @@ namespace EventStore.ClientAPI.Embedded {
 					"Count should be less than {0}. For larger reads you should page.",
 					ClientApiConstants.MaxReadSize));
 			var source = new TaskCompletionSource<AllEventsSlice>(TaskCreationOptions.RunContinuationsAsynchronously);
-			var envelope = new EmbeddedResponseEnvelope(new EmbeddedResponders.ReadAllEventsBackwardFiltered(source));
+			var envelope = new EmbeddedResponseEnvelope(new EmbeddedResponders.FilteredReadAllEventsBackward(source));
 			Guid corrId = Guid.NewGuid();
 
 			var serverFilter = ConvertToServerFilter(filter);
 
 			_publisher.PublishWithAuthentication(_authenticationProvider,
 				GetUserCredentials(_settings, userCredentials), source.SetException, user =>
-					new ClientMessage.ReadAllEventsBackwardFiltered(corrId, corrId, envelope,
+					new ClientMessage.FilteredReadAllEventsBackward(corrId, corrId, envelope,
 						position.CommitPosition,
-						position.PreparePosition, maxCount, resolveLinkTos, false, maxSearchWindowInternal, null,
+						position.PreparePosition, maxCount, resolveLinkTos, false, maxSearchWindow, null,
 						EventFilter.Get(serverFilter), user));
 			return source.Task;
 		}
@@ -517,23 +526,28 @@ namespace EventStore.ClientAPI.Embedded {
 			return source.Task;
 		}
 
-		public Task<EventStoreSubscription> SubscribeToAllFilteredAsync(bool resolveLinkTos, Filter filter,
+		public Task<EventStoreSubscription> FilteredSubscribeToAllAsync(bool resolveLinkTos, Filter filter,
 			Func<EventStoreSubscription, ResolvedEvent, Task> eventAppeared,
-			Func<EventStoreSubscription, Position, Task> checkpointReached = null,
-			int? checkpointInterval = null,
+			Action<EventStoreSubscription, SubscriptionDropReason, Exception> subscriptionDropped = null,
+			UserCredentials userCredentials = null) {
+			return FilteredSubscribeToAllAsync(resolveLinkTos, filter, eventAppeared, (s, p) => TaskEx.CompletedTask,
+				DontReportCheckpointReached, subscriptionDropped, userCredentials);
+		}
+
+		public Task<EventStoreSubscription> FilteredSubscribeToAllAsync(bool resolveLinkTos, Filter filter,
+			Func<EventStoreSubscription, ResolvedEvent, Task> eventAppeared,
+			Func<EventStoreSubscription, Position, Task> checkpointReached,
+			int checkpointInterval,
 			Action<EventStoreSubscription, SubscriptionDropReason, Exception> subscriptionDropped = null,
 			UserCredentials userCredentials = null) {
 			Ensure.NotNull(eventAppeared, nameof(eventAppeared));
 			Ensure.NotNull(filter, nameof(filter));
+			Ensure.NotNull(checkpointReached, nameof(checkpointReached));
 
-			if (checkpointReached == null) {
-				checkpointInterval = DontReportCheckpointReached;
-			} else if (!checkpointInterval.HasValue){
-				throw new ArgumentNullException(nameof(checkpointInterval));
-			} else if (checkpointInterval <= 0) {
+			if (checkpointInterval <= 0 && checkpointInterval != DontReportCheckpointReached) {
 				throw new ArgumentOutOfRangeException(nameof(checkpointInterval));
 			}
-			
+
 			var source =
 				new TaskCompletionSource<EventStoreSubscription>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -542,10 +556,9 @@ namespace EventStore.ClientAPI.Embedded {
 			Guid corrId = Guid.NewGuid();
 			_subscriptions.StartFilteredSubscription(corrId, source, string.Empty,
 				GetUserCredentials(_settings, userCredentials), resolveLinkTos, serverFilter, eventAppeared,
-				checkpointReached, checkpointInterval.Value, subscriptionDropped);
+				checkpointReached, checkpointInterval, subscriptionDropped);
 			return source.Task;
 		}
-
 
 		public EventStorePersistentSubscriptionBase ConnectToPersistentSubscription(
 			string stream, string groupName,
