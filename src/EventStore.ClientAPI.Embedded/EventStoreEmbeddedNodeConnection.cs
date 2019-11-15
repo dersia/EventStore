@@ -617,8 +617,8 @@ namespace EventStore.ClientAPI.Embedded {
 			Action<EventStoreCatchUpSubscription> liveProcessingStarted = null,
 			Action<EventStoreCatchUpSubscription, SubscriptionDropReason, Exception> subscriptionDropped = null,
 			UserCredentials userCredentials = null) {
-			Ensure.NotNull(eventAppeared, "eventAppeared");
-			Ensure.NotNull(settings, "settings");
+			Ensure.NotNull(eventAppeared, nameof(eventAppeared));
+			Ensure.NotNull(settings, nameof(settings));
 
 			var catchUpSubscription =
 				new EventStoreAllCatchUpSubscription(this, _settings.Log, lastCheckpoint,
@@ -647,8 +647,8 @@ namespace EventStore.ClientAPI.Embedded {
 			Action<EventStoreCatchUpSubscription> liveProcessingStarted = null,
 			Action<EventStoreCatchUpSubscription, SubscriptionDropReason, Exception> subscriptionDropped = null,
 			UserCredentials userCredentials = null) {
-			Ensure.NotNull(eventAppeared, "eventAppeared");
-			Ensure.NotNull(settings, "settings");
+			Ensure.NotNull(eventAppeared, nameof(eventAppeared));
+			Ensure.NotNull(settings, nameof(settings));
 
 			Ensure.NotNull(filter, nameof(filter));
 			Ensure.NotNull(checkpointReached, nameof(checkpointReached));
