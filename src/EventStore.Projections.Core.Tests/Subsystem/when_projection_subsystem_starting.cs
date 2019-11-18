@@ -1,36 +1,51 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
+using EventStore.Core.Bus;
 using EventStore.Core.Messages;
-using EventStore.Projections.Core.Messages;
 using NUnit.Framework;
 
 namespace EventStore.Projections.Core.Tests.Subsystem {
 	[TestFixture]
 	public class when_projection_subsystem_starting_and_all_components_started
 		: TestFixtureWithProjectionSubsystem {
+		private readonly ManualResetEventSlim _initializedReceived = new ManualResetEventSlim();
+		
 		protected override void Given() {
+			Subsystem.MasterOutputBus.Subscribe(
+				new AdHocHandler<SystemMessage.SubSystemInitialized>(msg => {
+					_initializedReceived.Set();
+				}));
+			
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
-
-			AllComponentsStarted(startMessage.CorrelationId);
+			var startMsg = WaitForStartMessage();
+			AllComponentsStarted(startMsg.CorrelationId);
 		}
 
 		[Test]
 		public void should_publish_subsystem_initialized_when_all_components_started() {
-			Assert.AreEqual(1, GetSubsystemInitializedMessages().Count);
+			if (!_initializedReceived.Wait(WaitTimeoutMs)) {
+				Assert.Fail("Timed out waiting for Subsystem Initialized");
+			}
 		}
 	}
 
 	[TestFixture]
 	public class when_projection_subsystem_starting_and_wrong_components_started
 		: TestFixtureWithProjectionSubsystem {
+		private readonly ManualResetEventSlim _initializedReceived = new ManualResetEventSlim();
+		
 		protected override void Given() {
+			Subsystem.MasterOutputBus.Subscribe(
+				new AdHocHandler<SystemMessage.SubSystemInitialized>(msg => {
+					_initializedReceived.Set();
+				}));
+			
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
+			
+			WaitForStartMessage();
 
 			var wrongCorrelation = Guid.NewGuid();
 
@@ -39,7 +54,7 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 
 		[Test]
 		public void should_ignore_component_started_for_incorrect_correlation() {
-			Assert.IsEmpty(GetSubsystemInitializedMessages());
+			Assert.False(_initializedReceived.Wait(WaitTimeoutMs));
 		}
 	}
 
@@ -52,9 +67,8 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
-			_startCorrelation = startMessage.CorrelationId;
+			var startMsg = WaitForStartMessage();
+			_startCorrelation = startMsg.CorrelationId;
 
 			AllComponentsStarted(_startCorrelation);
 
@@ -63,7 +77,7 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 
 		[Test]
 		public void should_stop_the_subsystem_with_start_correlation() {
-			var stopMessage = GetStopMessages().SingleOrDefault();
+			var stopMessage = WaitForStopMessage();
 			Assert.NotNull(stopMessage);
 			Assert.AreEqual(_startCorrelation, stopMessage.CorrelationId);
 		}
@@ -78,22 +92,22 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
+			var startMessage = WaitForStartMessage();
 			_startCorrelation = startMessage.CorrelationId;
 
 			AllComponentsStarted(_startCorrelation);
 
 			Subsystem.Handle(new SystemMessage.BecomeUnknown(Guid.NewGuid()));
-
+			WaitForStopMessage();
 			AllComponentsStopped(_startCorrelation);
 		}
 
 		[Test]
 		public void should_allow_starting_the_subsystem_again() {
-			ClearMessages();
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
-			Assert.AreEqual(1, GetStartMessages().Count);
+			var startMessage = WaitForStartMessage();
+			
+			Assert.AreNotEqual(_startCorrelation, startMessage.CorrelationId);
 		}
 	}
 
@@ -106,8 +120,7 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
+			var startMessage = WaitForStartMessage();
 			_startCorrelation = startMessage.CorrelationId;
 
 			// Become unknown before components started
@@ -118,9 +131,8 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 
 		[Test]
 		public void should_stop_the_subsystem() {
-			var stopMessages = GetStopMessages();
-			Assert.AreEqual(1, stopMessages.Count);
-			Assert.AreEqual(_startCorrelation, stopMessages[0].CorrelationId);
+			var stopMessage = WaitForStopMessage();
+			Assert.AreEqual(_startCorrelation, stopMessage.CorrelationId);
 		}
 	}
 
@@ -133,16 +145,14 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
+			var startMessage = WaitForStartMessage();
 			_startCorrelation = startMessage.CorrelationId;
 
 			AllComponentsStarted(_startCorrelation);
 
-			ClearMessages();
-
 			// Become unknown to stop the subsystem
 			Subsystem.Handle(new SystemMessage.BecomeUnknown(Guid.NewGuid()));
+			WaitForStopMessage();
 
 			// Become master again before subsystem fully stopped
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
@@ -152,9 +162,8 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 
 		[Test]
 		public void should_start_the_subsystem_again() {
-			var startMessages = GetStartMessages();
-			Assert.AreEqual(1, startMessages.Count);
-			Assert.AreNotEqual(_startCorrelation, startMessages[0].CorrelationId);
+			var startMessages = WaitForStartMessage();
+			Assert.AreNotEqual(_startCorrelation, startMessages.CorrelationId);
 		}
 	}
 }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using EventStore.Core.Messages;
 using EventStore.Core.Messaging;
 using EventStore.Projections.Core.Messages;
@@ -16,19 +15,16 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 		protected override void Given() {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
-			
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
-			_startCorrelation = startMessage.CorrelationId;
+
+			var startMsg = WaitForStartMessage();
+			_startCorrelation = startMsg.CorrelationId;
 
 			AllComponentsStarted(_startCorrelation);
 
-			ClearMessages();
-			
+			ResetMessageEvents();
+
 			Subsystem.Handle(new ProjectionSubsystemMessage.RestartSubsystem(
 				new CallbackEnvelope(message => _restartResponse = message)));
-			
-			AllComponentsStopped(_startCorrelation);
 		}
 
 		[Test]
@@ -38,14 +34,17 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 
 		[Test]
 		public void should_stop_the_subsystem() {
-			Assert.AreEqual(1, GetStopMessages().Count);
+			var stopMsg = WaitForStopMessage();
+			Assert.AreEqual(_startCorrelation, stopMsg.CorrelationId);
 		}
 		
 		[Test]
-		public void should_start_the_subsystem() {
-			var startMessages = GetStartMessages();
-			Assert.AreEqual(1, startMessages.Count());
-			Assert.AreNotEqual(_startCorrelation, startMessages[0].CorrelationId);
+		public void should_start_the_subsystem_when_fully_stopped() {
+			WaitForStopMessage();
+			AllComponentsStopped(_startCorrelation);
+			var restartMsg = WaitForStartMessage("Timed out waiting for restart StartComponents");
+			
+			Assert.AreNotEqual(_startCorrelation, restartMsg.CorrelationId);
 		}
 	}
 	
@@ -53,31 +52,35 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 	public class when_projection_subsystem_restarted_twice
 		: TestFixtureWithProjectionSubsystem {
 		private Guid _startCorrelation;
+		private Guid _restartCorrelation;
+		
 		private Message _secondRestartResponse;
 
 		protected override void Given() {
+			// Start subsystem
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
-			
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
-			_startCorrelation = startMessage.CorrelationId;
+
+			 var startMsg = WaitForStartMessage();
+			_startCorrelation = startMsg.CorrelationId;
 
 			AllComponentsStarted(_startCorrelation);
 
-			ClearMessages();
-			
+			// Restart subsystem
+			ResetMessageEvents();
 			Subsystem.Handle(new ProjectionSubsystemMessage.RestartSubsystem(new NoopEnvelope()));
-			AllComponentsStopped(_startCorrelation);
-			
-			var restartMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(restartMessage);
-			
-			AllComponentsStarted(restartMessage.CorrelationId);
 
+			WaitForStopMessage("Timed out waiting for StopComponents on first restart");
+			AllComponentsStopped(_startCorrelation);
+
+			var restartMsg = WaitForStartMessage("Timed out waiting for StartComponents on first restart");
+			_restartCorrelation = restartMsg.CorrelationId;
+			AllComponentsStarted(_restartCorrelation);
+
+			// Restart subsystem again
+			ResetMessageEvents();
 			Subsystem.Handle(new ProjectionSubsystemMessage.RestartSubsystem(
 				new CallbackEnvelope(message => _secondRestartResponse = message)));
-			AllComponentsStopped(restartMessage.CorrelationId);
 		}
 
 		[Test]
@@ -87,12 +90,17 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 
 		[Test]
 		public void should_stop_the_subsystem() {
-			Assert.AreEqual(2, GetStopMessages().Count);
+			var stopMsg = WaitForStopMessage("Timed out waiting for StopComponents on second restart");
+			Assert.AreEqual(_restartCorrelation, stopMsg.CorrelationId);
 		}
 		
 		[Test]
 		public void should_start_the_subsystem() {
-			Assert.AreEqual(2, GetStartMessages().Count);
+			WaitForStopMessage("Timed out waiting for StopComponents on second restart");
+			AllComponentsStopped(_restartCorrelation);
+			
+			var restartMsg = WaitForStartMessage("Timed out waiting for StartComponents on second restart");
+			Assert.AreNotEqual(_restartCorrelation, restartMsg.CorrelationId);
 		}
 	}
 
@@ -100,21 +108,22 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 	public class when_projection_subsystem_restarting_and_node_becomes_unknown
 		: TestFixtureWithProjectionSubsystem {
 		private Guid _startCorrelation;
+		private ProjectionSubsystemMessage.StopComponents _stopMsg;
 
 		protected override void Given() {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
-			_startCorrelation = startMessage.CorrelationId;
+			var startMsg = WaitForStartMessage();
+			_startCorrelation = startMsg.CorrelationId;
 
 			AllComponentsStarted(_startCorrelation);
 
-			ClearMessages();
-
+			ResetMessageEvents();
 			Subsystem.Handle(new ProjectionSubsystemMessage.RestartSubsystem(new NoopEnvelope()));
 
+			_stopMsg = WaitForStopMessage();
+			
 			// Become unknown before components stopped
 			Subsystem.Handle(new SystemMessage.BecomeUnknown(Guid.NewGuid()));
 
@@ -123,12 +132,13 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 
 		[Test]
 		public void should_stop_the_subsystem_for_the_restart() {
-			Assert.AreEqual(1, GetStopMessages().Count);
+			Assert.AreEqual(_startCorrelation, _stopMsg.CorrelationId);
 		}
 
 		[Test]
 		public void should_not_start_the_subsystem() {
-			Assert.IsEmpty(GetStartMessages());
+			var startMsg = WaitForStartMessage(failOnTimeout: false);
+			Assert.IsNull(startMsg);
 		}
 	}
 	
@@ -141,6 +151,8 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
+			WaitForStartMessage();
+			
 			// Restart subsystem before fully started
 			Subsystem.Handle(new ProjectionSubsystemMessage.RestartSubsystem(
 				new CallbackEnvelope(message => _restartResponse = message)));
@@ -162,12 +174,13 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
-			_startCorrelation = startMessage.CorrelationId;
+			var startMsg = WaitForStartMessage();
+			_startCorrelation = startMsg.CorrelationId;
 			AllComponentsStarted(_startCorrelation);
 
 			Subsystem.Handle(new SystemMessage.BecomeUnknown(Guid.NewGuid()));
+
+			WaitForStopMessage();
 
 			// Restart subsystem before fully stopped
 			Subsystem.Handle(new ProjectionSubsystemMessage.RestartSubsystem(
@@ -190,12 +203,14 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 			Subsystem.Handle(new SystemMessage.SystemCoreReady());
 			Subsystem.Handle(new SystemMessage.BecomeMaster(Guid.NewGuid()));
 
-			var startMessage = GetStartMessages().SingleOrDefault();
-			Assert.NotNull(startMessage);
-			_startCorrelation = startMessage.CorrelationId;
+			var startMsg = WaitForStartMessage();
+			_startCorrelation = startMsg.CorrelationId;
 			AllComponentsStarted(_startCorrelation);
+			
 			// First restart
 			Subsystem.Handle(new ProjectionSubsystemMessage.RestartSubsystem(new NoopEnvelope()));
+
+			WaitForStopMessage();
 
 			// Restart subsystem before finished restart
 			Subsystem.Handle(new ProjectionSubsystemMessage.RestartSubsystem(

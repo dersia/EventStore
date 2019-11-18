@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Threading;
 using EventStore.Common.Options;
 using EventStore.Core;
 using EventStore.Core.Bus;
-using EventStore.Core.Messages;
 using EventStore.Core.Messaging;
 using EventStore.Core.Services.TimerService;
 using EventStore.Core.Services.Transport.Http;
@@ -18,11 +16,16 @@ using NUnit.Framework;
 namespace EventStore.Projections.Core.Tests.Subsystem {
 	public class TestFixtureWithProjectionSubsystem {
 		private StandardComponents _standardComponents;
-		private readonly List<Message> _masterMainBusMessages = new List<Message>();
-		private readonly List<Message> _masterOutputBusMessages = new List<Message>();
 		
 		protected ProjectionsSubsystem Subsystem;
+		protected const int WaitTimeoutMs = 3000;
 
+		private readonly ManualResetEvent _stopReceived = new ManualResetEvent(false);
+		private ProjectionSubsystemMessage.StopComponents _lastStopMessage;
+
+		private readonly ManualResetEvent _startReceived = new ManualResetEvent(false);
+		private ProjectionSubsystemMessage.StartComponents _lastStartMessage;
+	
 		private StandardComponents CreateStandardComponents() {
 			var db = new TFChunkDb(TFChunkHelper.CreateDbConfig(Path.GetTempPath(), 0));
 			var mainQueue = QueuedHandler.CreateQueuedHandler
@@ -48,10 +51,21 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 			Subsystem.MasterMainBus.Unsubscribe<ProjectionSubsystemMessage.ComponentStarted>(Subsystem);
 			Subsystem.MasterMainBus.Unsubscribe<ProjectionSubsystemMessage.ComponentStopped>(Subsystem);
 			
-			Subsystem.MasterMainBus.Subscribe(
-				new AdHocHandler<Message>(msg => _masterMainBusMessages.Add(msg)));
-			Subsystem.MasterOutputBus.Subscribe(
-				new AdHocHandler<Message>(msg => _masterOutputBusMessages.Add(msg)));
+			Subsystem.MasterMainBus.Subscribe(new AdHocHandler<Message>(
+				msg => {
+					switch (msg) {
+						case ProjectionSubsystemMessage.StartComponents start: {
+							_lastStartMessage = start;
+							_startReceived.Set();
+							break;
+						}
+						case ProjectionSubsystemMessage.StopComponents stop: {
+							_lastStopMessage = stop;
+							_stopReceived.Set();
+							break;
+						}
+					}
+				}));
 
 			Subsystem.Start();
 
@@ -62,9 +76,6 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 		public void TearDown() {
 			_standardComponents.Db.Dispose();
 			_standardComponents.TimerService.Dispose();
-
-			_masterMainBusMessages.Clear();
-			_masterOutputBusMessages.Clear();
 		}
 
 		protected virtual void Given() {
@@ -84,24 +95,31 @@ namespace EventStore.Projections.Core.Tests.Subsystem {
 				nameof(ProjectionCoreCoordinator), correlationId));
 		}
 
-		protected void ClearMessages() {
-			_masterMainBusMessages.Clear();
-			_masterOutputBusMessages.Clear();
+		protected ProjectionSubsystemMessage.StartComponents WaitForStartMessage
+			(string timeoutMsg = null, bool failOnTimeout = true) {
+			timeoutMsg = timeoutMsg ?? "Timed out waiting for Start Components";
+			if (_startReceived.WaitOne(WaitTimeoutMs))
+				return _lastStartMessage;
+			if (failOnTimeout)
+				Assert.Fail(timeoutMsg);
+			return null;
 		}
-		
-		protected List<ProjectionSubsystemMessage.StartComponents> GetStartMessages() {
-			var messages = _masterMainBusMessages.ToArray();
-			return messages.OfType<ProjectionSubsystemMessage.StartComponents>().ToList();
+
+		protected ProjectionSubsystemMessage.StopComponents WaitForStopMessage(string timeoutMsg = null) {
+			timeoutMsg = timeoutMsg ?? "Timed out waiting for Stop Components";
+			if (_stopReceived.WaitOne(WaitTimeoutMs)) {
+				return _lastStopMessage;
+			}
+
+			Assert.Fail(timeoutMsg);
+			return null;
 		}
-		
-		protected List<ProjectionSubsystemMessage.StopComponents> GetStopMessages() {
-			var messages = _masterMainBusMessages.ToArray();
-			return messages.OfType<ProjectionSubsystemMessage.StopComponents>().ToList();
-		}
-		
-		protected List<SystemMessage.SubSystemInitialized> GetSubsystemInitializedMessages() {
-			var messages = _masterOutputBusMessages.ToArray();
-			return messages.OfType<SystemMessage.SubSystemInitialized>().ToList();
+
+		protected void ResetMessageEvents() {
+			_stopReceived.Reset();
+			_startReceived.Reset();
+			_lastStopMessage = null;
+			_lastStartMessage = null;
 		}
 	}
 }
