@@ -2,6 +2,8 @@
 using System.IO;
 using System.Threading;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.Scavenge {
@@ -19,7 +21,7 @@ namespace EventStore.Core.Tests.Index.Scavenge {
 			table.Add(0x010200000000, 0, 2);
 			table.Add(0x010300000000, 0, 3);
 			table.Add(0x010300000000, 1, 4);
-			_oldTable = PTable.FromMemtable(table, GetTempFilePath());
+			_oldTable = PTable.FromMemtable(table, GetTempFilePath(), ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault);
 
 			var cancellationTokenSource = new CancellationTokenSource();
 			long spaceSaved;
@@ -35,7 +37,8 @@ namespace EventStore.Core.Tests.Index.Scavenge {
 			_expectedOutputFile = GetTempFilePath();
 			Assert.That(
 				() => PTable.Scavenged(_oldTable, _expectedOutputFile, upgradeHash, existsAt, readRecord,
-					PTableVersions.IndexV4, out spaceSaved, ct: cancellationTokenSource.Token),
+					PTableVersions.IndexV4, out spaceSaved, ct: cancellationTokenSource.Token,
+					initialReaders: ESConsts.PTableInitialReaderCount, maxReaders: TFChunkHelper.PTableMaxReaderCountDefault),
 				Throws.InstanceOf<OperationCanceledException>());
 		}
 

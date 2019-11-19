@@ -7,6 +7,7 @@ using EventStore.Core.Index.Hashes;
 using EventStore.Core.TransactionLog;
 using EventStore.Core.TransactionLog.LogRecords;
 using EventStore.Core.Services.Storage.ReaderIndex;
+using EventStore.Core.Tests.TransactionLog;
 
 namespace EventStore.Core.Tests.Services.Storage.HashCollisions {
 	[TestFixture]
@@ -39,7 +40,7 @@ namespace EventStore.Core.Tests.Services.Storage.HashCollisions {
 				() => new HashListMemTable(PTableVersions.IndexV1, maxSize: _maxMemTableSize),
 				() => _fakeReader,
 				PTableVersions.IndexV1,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: _maxMemTableSize,
 				maxTablesPerLevel: 2);
 			_tableIndex.Initialize(long.MaxValue);
@@ -227,7 +228,7 @@ namespace EventStore.Core.Tests.Services.Storage.HashCollisions {
 				() => new HashListMemTable(PTableVersions.IndexV2, maxSize: _maxMemTableSize),
 				() => _fakeReader,
 				PTableVersions.IndexV2,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: _maxMemTableSize,
 				maxTablesPerLevel: 2);
 			_tableIndex.Initialize(long.MaxValue);

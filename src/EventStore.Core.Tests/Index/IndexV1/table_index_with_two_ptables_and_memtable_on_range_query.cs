@@ -5,6 +5,7 @@ using EventStore.Core.Tests.Fakes;
 using EventStore.Core.TransactionLog;
 using NUnit.Framework;
 using EventStore.Core.Index.Hashes;
+using EventStore.Core.Tests.TransactionLog;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
 	[TestFixture(PTableVersions.IndexV1, false), Category("LongRunning")]
@@ -40,7 +41,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 				() => new HashListMemTable(_ptableVersion, maxSize: 10),
 				() => fakeReader,
 				_ptableVersion,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: 2,
 				maxTablesPerLevel: 2,
 				skipIndexVerify: _skipIndexVerify);

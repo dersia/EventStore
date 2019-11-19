@@ -5,6 +5,7 @@ using System.Threading;
 using EventStore.Core.Index;
 using EventStore.Core.Index.Hashes;
 using EventStore.Core.Tests.Fakes;
+using EventStore.Core.Tests.TransactionLog;
 using EventStore.Core.Tests.TransactionLog.Scavenging.Helpers;
 using EventStore.Core.TransactionLog;
 using NUnit.Framework;
@@ -40,7 +41,7 @@ namespace EventStore.Core.Tests.Index.Scavenge {
 					throw new Exception("Expected exception");
 				},
 				PTableVersions.IndexV4,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: 2,
 				maxTablesPerLevel: 5);
 			_tableIndex.Initialize(long.MaxValue);
@@ -63,7 +64,7 @@ namespace EventStore.Core.Tests.Index.Scavenge {
 				() => new HashListMemTable(PTableVersions.IndexV4, maxSize: 5),
 				() => fakeReader,
 				PTableVersions.IndexV4,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: 2,
 				maxTablesPerLevel: 5);
 

@@ -1,6 +1,8 @@
 using System.IO;
 using System.Linq;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
@@ -38,7 +40,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 			_map = IndexMapTestFactory.FromFile(_filename);
 			var memtable = new HashListMemTable(_ptableVersion, maxSize: 10);
 			memtable.Add(0, 1, 0);
-			var table = PTable.FromMemtable(memtable, _tablename, skipIndexVerify: _skipIndexVerify);
+			var table = PTable.FromMemtable(memtable, _tablename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, skipIndexVerify: _skipIndexVerify);
 			_result = _map.AddPTable(table, 7, 11, (streamId, hash) => hash, _ => true,
 				_ => new System.Tuple<string, bool>("", true), new FakeFilenameProvider(_mergeFile), _ptableVersion,
 				_maxAutoMergeIndexLevel, 0, skipIndexVerify: _skipIndexVerify);

@@ -6,6 +6,8 @@ using EventStore.Core.Index;
 using EventStore.Core.Util;
 using NUnit.Framework;
 using EventStore.Common.Utils;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
 	[TestFixture(PTableVersions.IndexV1)]
@@ -35,7 +37,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 
 			var memTable = new HashListMemTable(_ptableVersion, maxSize: 10);
 			memTable.Add(0, 1, 2);
-			_ptable = PTable.FromMemtable(memTable, _ptableFileName);
+			_ptable = PTable.FromMemtable(memTable, _ptableFileName, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault);
 		}
 
 		[TearDown]

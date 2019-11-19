@@ -106,7 +106,8 @@ namespace EventStore.Core.Tests.Helpers {
 				hashCollisionReadLimit: Opts.HashCollisionReadLimitDefault,
 				startStandardProjections: false, disableHTTPCaching: false, logHttpRequests: false,
 				connectionPendingSendBytesThreshold: Opts.ConnectionPendingSendBytesThresholdDefault,
-				connectionQueueSizeThreshold: Opts.ConnectionQueueSizeThresholdDefault);
+				connectionQueueSizeThreshold: Opts.ConnectionQueueSizeThresholdDefault,
+				ptableMaxReaderCount: TFChunkHelper.PTableMaxReaderCountDefault);
 
 			Log.Info(
 				"\n{0,-25} {1} ({2}/{3}, {4})\n" + "{5,-25} {6} ({7})\n" + "{8,-25} {9} ({10}-bit)\n"

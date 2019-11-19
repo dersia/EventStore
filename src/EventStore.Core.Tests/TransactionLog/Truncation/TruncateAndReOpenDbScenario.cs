@@ -37,7 +37,7 @@ namespace EventStore.Core.Tests.TransactionLog.Truncation {
 				() => new HashListMemTable(PTableVersions.IndexV3, MaxEntriesInMemTable * 2),
 				() => new TFReaderLease(readers),
 				PTableVersions.IndexV3,
-				MaxEntriesInMemTable);
+				MaxEntriesInMemTable, TFChunkHelper.PTableMaxReaderCountDefault);
 			ReadIndex = new ReadIndex(new NoopPublisher(),
 				readers,
 				TableIndex,

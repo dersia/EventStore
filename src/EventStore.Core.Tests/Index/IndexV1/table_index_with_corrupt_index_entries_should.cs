@@ -8,6 +8,7 @@ using EventStore.Core.Tests.Fakes;
 using System.IO;
 using System.Collections.Generic;
 using EventStore.Core.Exceptions;
+using EventStore.Core.Tests.TransactionLog;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
 	public class table_index_with_corrupt_index_entries_should : SpecificationWithDirectoryPerTestFixture {
@@ -27,7 +28,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 				() => new HashListMemTable(version, maxSize: NumIndexEntries),
 				() => fakeReader,
 				version,
-				int.MaxValue,
+				int.MaxValue, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: NumIndexEntries,
 				skipIndexVerify: skipIndexVerify);
 			_tableIndex.Initialize(long.MaxValue);
@@ -68,7 +69,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 				() => new HashListMemTable(version, maxSize: NumIndexEntries),
 				() => fakeReader,
 				version,
-				int.MaxValue,
+				int.MaxValue, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: NumIndexEntries,
 				skipIndexVerify: skipIndexVerify,
 				indexCacheDepth: 8);

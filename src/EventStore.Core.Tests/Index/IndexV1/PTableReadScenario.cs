@@ -1,4 +1,6 @@
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
@@ -23,7 +25,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 
 			AddItemsForScenario(table);
 
-			PTable = PTable.FromMemtable(table, Filename, cacheDepth: _midpointCacheDepth,
+			PTable = PTable.FromMemtable(table, Filename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, cacheDepth: _midpointCacheDepth,
 				skipIndexVerify: _skipIndexVerify);
 		}
 

@@ -5,6 +5,7 @@ using EventStore.Common.Utils;
 using EventStore.Core.Authentication;
 using EventStore.Core.Cluster.Settings;
 using EventStore.Core.Services.Monitoring;
+using EventStore.Core.Tests.TransactionLog;
 using EventStore.Core.TransactionLog.Chunks;
 using EventStore.Core.Util;
 
@@ -40,7 +41,7 @@ namespace EventStore.Core.Tests.Services.ElectionsService {
 				TimeSpan.FromSeconds(10),
 				TimeSpan.FromSeconds(10), true, Opts.MaxMemtableSizeDefault, Opts.HashCollisionReadLimitDefault, false,
 				false, false,
-				Opts.ConnectionPendingSendBytesThresholdDefault, Opts.ConnectionQueueSizeThresholdDefault);
+				Opts.ConnectionPendingSendBytesThresholdDefault, Opts.ConnectionQueueSizeThresholdDefault, TFChunkHelper.PTableMaxReaderCountDefault);
 
 			return vnode;
 		}

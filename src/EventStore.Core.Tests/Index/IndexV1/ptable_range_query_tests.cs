@@ -1,5 +1,7 @@
 using System.Linq;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
@@ -32,7 +34,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 			table.Add(0x010300000000, 0x0001, 0xFFF1);
 			table.Add(0x010300000000, 0x0003, 0xFFF3);
 			table.Add(0x010300000000, 0x0005, 0xFFF5);
-			_ptable = PTable.FromMemtable(table, Filename, cacheDepth: 0, skipIndexVerify: _skipIndexVerify);
+			_ptable = PTable.FromMemtable(table, Filename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, cacheDepth: 0, skipIndexVerify: _skipIndexVerify);
 		}
 
 		public override void TestFixtureTearDown() {

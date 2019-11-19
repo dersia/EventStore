@@ -1,5 +1,7 @@
 ﻿using System;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.Scavenge {
@@ -29,7 +31,7 @@ namespace EventStore.Core.Tests.Index.Scavenge {
 			table.Add(0x010200000000, 0, 2);
 			table.Add(0x010300000000, 0, 3);
 			table.Add(0x010300000000, 1, 4);
-			_oldTable = PTable.FromMemtable(table, GetTempFilePath());
+			_oldTable = PTable.FromMemtable(table, GetTempFilePath(), ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault);
 
 			long spaceSaved;
 			Func<IndexEntry, bool> existsAt = x => x.Position % 2 == 0;
@@ -39,7 +41,8 @@ namespace EventStore.Core.Tests.Index.Scavenge {
 			};
 
 			_newtable = PTable.Scavenged(_oldTable, GetTempFilePath(), upgradeHash, existsAt, readRecord,
-				PTableVersions.IndexV4, out spaceSaved, skipIndexVerify: _skipIndexVerify);
+				PTableVersions.IndexV4, out spaceSaved, skipIndexVerify: _skipIndexVerify,
+				initialReaders: ESConsts.PTableInitialReaderCount, maxReaders: TFChunkHelper.PTableMaxReaderCountDefault);
 		}
 
 		[OneTimeTearDown]

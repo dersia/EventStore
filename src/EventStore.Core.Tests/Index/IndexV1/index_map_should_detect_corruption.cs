@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using EventStore.Core.Exceptions;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
@@ -38,7 +40,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 			var memtable = new HashListMemTable(_ptableVersion, maxSize: 10);
 			memtable.Add(0, 0, 0);
 			memtable.Add(1, 1, 100);
-			_ptable = PTable.FromMemtable(memtable, _ptableFileName, skipIndexVerify: _skipIndexVerify);
+			_ptable = PTable.FromMemtable(memtable, _ptableFileName, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, skipIndexVerify: _skipIndexVerify);
 
 			indexMap = indexMap.AddPTable(_ptable, 0, 0, (streamId, hash) => hash, _ => true,
 				_ => new Tuple<string, bool>("", true), new GuidFilenameProvider(PathName), _ptableVersion,

@@ -3,6 +3,8 @@ using System.IO;
 using EventStore.Common.Options;
 using EventStore.Core.Exceptions;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
@@ -51,7 +53,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 				mtable.Add(streamId, eventNumber, logPosition);
 			}
 
-			_table = PTable.FromMemtable(mtable, _filename, skipIndexVerify: _skipIndexVerify);
+			_table = PTable.FromMemtable(mtable, _filename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, skipIndexVerify: _skipIndexVerify);
 			_table.Dispose();
 			File.Copy(_filename, _copiedfilename);
 		}
@@ -64,8 +66,8 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 		[Test]
 		public void same_midpoints_are_loaded_when_enabling_or_disabling_index_verification() {
 			for (int depth = 2; depth <= 20; depth++) {
-				var ptableWithMD5Verification = PTable.FromFile(_copiedfilename, depth, false);
-				var ptableWithoutVerification = PTable.FromFile(_copiedfilename, depth, true);
+				var ptableWithMD5Verification = PTable.FromFile(_copiedfilename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, depth, false);
+				var ptableWithoutVerification = PTable.FromFile(_copiedfilename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, depth, true);
 				var midPoints1 = ptableWithMD5Verification.GetMidPoints();
 				var midPoints2 = ptableWithoutVerification.GetMidPoints();
 

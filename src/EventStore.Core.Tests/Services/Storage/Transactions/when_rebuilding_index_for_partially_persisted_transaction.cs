@@ -14,6 +14,7 @@ using EventStore.Core.TransactionLog.LogRecords;
 using NUnit.Framework;
 using EventStore.Core.Util;
 using EventStore.Core.Index.Hashes;
+using EventStore.Core.Tests.TransactionLog;
 
 namespace EventStore.Core.Tests.Services.Storage.Transactions {
 	[TestFixture]
@@ -36,7 +37,7 @@ namespace EventStore.Core.Tests.Services.Storage.Transactions {
 				() => new HashListMemTable(PTableVersions.IndexV2, maxSize: MaxEntriesInMemTable * 2),
 				() => new TFReaderLease(readers),
 				PTableVersions.IndexV2,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: MaxEntriesInMemTable);
 			ReadIndex = new ReadIndex(new NoopPublisher(),
 				readers,

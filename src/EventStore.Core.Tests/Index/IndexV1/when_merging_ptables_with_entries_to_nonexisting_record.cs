@@ -3,6 +3,8 @@ using EventStore.Core.Index;
 using NUnit.Framework;
 using System;
 using System.Linq;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
 	[TestFixture(PTableVersions.IndexV2, false)]
@@ -36,12 +38,12 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 					table.Add((ulong)(0x010100000000 << i), j, i * 10 + j);
 				}
 
-				_tables.Add(PTable.FromMemtable(table, _files[i], skipIndexVerify: _skipIndexVerify));
+				_tables.Add(PTable.FromMemtable(table, _files[i], ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, skipIndexVerify: _skipIndexVerify));
 			}
 
 			_files.Add(GetTempFilePath());
 			_newtable = PTable.MergeTo(_tables, _files[4], (streamId, hash) => hash, x => x.Position % 2 == 0,
-				x => new Tuple<string, bool>("", x.Position % 2 == 0), _ptableVersion,
+				x => new Tuple<string, bool>("", x.Position % 2 == 0), _ptableVersion, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault,
 				skipIndexVerify: _skipIndexVerify);
 		}
 

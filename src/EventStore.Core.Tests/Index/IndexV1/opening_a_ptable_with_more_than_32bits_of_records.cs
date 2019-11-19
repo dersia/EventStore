@@ -6,6 +6,8 @@ using NUnit.Framework;
 using EventStore.Core.Index;
 using EventStore.Common.Utils;
 using EventStore.Common.Options;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
 	[TestFixture(PTable.IndexEntryV1Size), Explicit]
@@ -30,7 +32,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 			_size = _ptableCount * (long)_indexEntrySize + PTableHeader.Size + PTable.MD5Size;
 			Console.WriteLine("Creating PTable at {0}. Size of PTable: {1}", Filename, _size);
 			CreatePTableFile(Filename, _size, _indexEntrySize);
-			_ptable = PTable.FromFile(Filename, 22, false);
+			_ptable = PTable.FromFile(Filename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, 22, false);
 		}
 
 		public static void CreatePTableFile(string filename, long ptableSize, int indexEntrySize, int cacheDepth = 16) {

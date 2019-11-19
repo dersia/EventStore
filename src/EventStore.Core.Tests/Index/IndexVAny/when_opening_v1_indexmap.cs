@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using EventStore.Core.Exceptions;
 using EventStore.Core.Index;
+using EventStore.Core.Tests.TransactionLog;
 using EventStore.Core.Util;
 using NUnit.Framework;
 
@@ -52,7 +53,7 @@ namespace EventStore.Core.Tests.Index.IndexVAny {
 			base.TestFixtureSetUp();
 
 			_filename = GetFilePathFor("indexfile");
-			var empty = IndexMap.CreateEmpty(2, maxTableLevelsForAutomaticMerge: 4);
+			var empty = IndexMap.CreateEmpty(2, 4, TFChunkHelper.PTableMaxReaderCountDefault);
 			empty.SaveToFile(_filename);
 		}
 

@@ -3,6 +3,7 @@ using System.Linq;
 using EventStore.Core.Index;
 using NUnit.Framework;
 using EventStore.Core.Index.Hashes;
+using EventStore.Core.Tests.TransactionLog;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
 	[TestFixture(PTableVersions.IndexV1, false)]
@@ -35,7 +36,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 				() => new HashListMemTable(version: _ptableVersion, maxSize: 40),
 				() => { throw new InvalidOperationException(); },
 				_ptableVersion,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: 20,
 				skipIndexVerify: _skipIndexVerify);
 			_tableIndex.Initialize(long.MaxValue);

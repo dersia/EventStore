@@ -2,6 +2,8 @@ using System.IO;
 using EventStore.Common.Options;
 using EventStore.Core.Exceptions;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.IndexVAny {
@@ -19,7 +21,7 @@ namespace EventStore.Core.Tests.Index.IndexVAny {
 
 		[Test]
 		public void the_invalid_file_exception_is_thrown() {
-			var exc = Assert.Throws<CorruptIndexException>(() => PTable.FromFile(Filename, 16, false));
+			var exc = Assert.Throws<CorruptIndexException>(() => PTable.FromFile(Filename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, 16, false));
 			Assert.IsInstanceOf<InvalidFileException>(exc.InnerException);
 		}
 	}

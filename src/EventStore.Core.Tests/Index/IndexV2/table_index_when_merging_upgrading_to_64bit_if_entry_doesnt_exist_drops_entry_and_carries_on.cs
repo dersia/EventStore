@@ -4,6 +4,7 @@ using System.Threading;
 using EventStore.Core.Index;
 using EventStore.Core.Index.Hashes;
 using EventStore.Core.Tests.Services.Storage;
+using EventStore.Core.Tests.TransactionLog;
 using EventStore.Core.TransactionLog;
 using EventStore.Core.TransactionLog.LogRecords;
 using NUnit.Framework;
@@ -41,7 +42,7 @@ namespace EventStore.Core.Tests.Index.IndexV2 {
 				() => new HashListMemTable(PTableVersions.IndexV1, maxSize: 3),
 				() => fakeReader,
 				PTableVersions.IndexV1,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: 3,
 				maxTablesPerLevel: 2);
 			_tableIndex.Initialize(long.MaxValue);
@@ -56,7 +57,7 @@ namespace EventStore.Core.Tests.Index.IndexV2 {
 				() => new HashListMemTable(_ptableVersion, maxSize: 3),
 				() => fakeReader,
 				_ptableVersion,
-				5,
+				5, TFChunkHelper.PTableMaxReaderCountDefault,
 				maxSizeForMemory: 3,
 				maxTablesPerLevel: 2);
 			_tableIndex.Initialize(long.MaxValue);

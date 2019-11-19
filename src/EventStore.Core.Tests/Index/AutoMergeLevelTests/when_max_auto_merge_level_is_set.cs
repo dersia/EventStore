@@ -6,7 +6,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
 using EventStore.Core.Tests.Services.Storage.Transactions;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.AutoMergeLevelTests {
@@ -37,12 +39,12 @@ namespace EventStore.Core.Tests.Index.AutoMergeLevelTests {
 			var first = _map;
 			if (_result != null)
 				first = _result.MergedMap;
-			var pTable = PTable.FromMemtable(memtable, GetTempFilePath(), skipIndexVerify: _skipIndexVerify);
+			var pTable = PTable.FromMemtable(memtable, GetTempFilePath(), ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, skipIndexVerify: _skipIndexVerify);
 			_result = first.AddPTable(pTable,
 				10, 20, UpgradeHash, ExistsAt, RecordExistsAt, _fileNameProvider, _ptableVersion,
 				0, 0, skipIndexVerify: _skipIndexVerify);
 			for (int i = 3; i <= count * 2; i += 2) {
-				pTable = PTable.FromMemtable(memtable, GetTempFilePath(), skipIndexVerify: _skipIndexVerify);
+				pTable = PTable.FromMemtable(memtable, GetTempFilePath(), ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, skipIndexVerify: _skipIndexVerify);
 				_result = _result.MergedMap.AddPTable(
 					pTable,
 					i * 10, (i + 1) * 10, (streamId, hash) => hash, _ => true, _ => new Tuple<string, bool>("", true),

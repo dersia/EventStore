@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
@@ -27,7 +29,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 
 			var table = new HashListMemTable(_ptableVersion, maxSize: 10);
 			table.Add(0x010100000000, 0x0001, 0x0001);
-			_ptable = PTable.FromMemtable(table, Filename, cacheDepth: 0, skipIndexVerify: _skipIndexVerify);
+			_ptable = PTable.FromMemtable(table, Filename, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, cacheDepth: 0, skipIndexVerify: _skipIndexVerify);
 		}
 
 		public override void TestFixtureTearDown() {

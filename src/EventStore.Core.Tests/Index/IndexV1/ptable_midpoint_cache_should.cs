@@ -1,6 +1,8 @@
 using System;
 using EventStore.Common.Log;
 using EventStore.Core.Index;
+using EventStore.Core.Settings;
+using EventStore.Core.Tests.TransactionLog;
 using NUnit.Framework;
 
 namespace EventStore.Core.Tests.Index.IndexV1 {
@@ -48,7 +50,7 @@ namespace EventStore.Core.Tests.Index.IndexV1 {
 				memTable.Add((uint)rnd.Next(), rnd.Next(0, 1 << 20), Math.Abs(rnd.Next() * rnd.Next()));
 			}
 
-			var ptable = PTable.FromMemtable(memTable, file, depth, skipIndexVerify: _skipIndexVerify);
+			var ptable = PTable.FromMemtable(memTable, file, ESConsts.PTableInitialReaderCount, TFChunkHelper.PTableMaxReaderCountDefault, depth, skipIndexVerify: _skipIndexVerify);
 			return ptable;
 		}
 
